@@ -1,0 +1,22 @@
+{
+  "name": "@kmos/configuration",
+  "version": "1.0.0-rc.1",
+  "private": true,
+  "type": "module",
+  "description": "KMOS Configuration Service (KMOS-0209): externalized, versioned, governed configuration with secret references.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@kmos/canonical-kernel": "*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --experimental-strip-types --import ../../tools/dev/register.mjs --test test/*.test.ts"
+  }
+}
