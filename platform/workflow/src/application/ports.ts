@@ -15,6 +15,8 @@ export interface InvocationContext {
   readonly executionId: CanonicalId;
   readonly stepId: string;
   readonly correlationId: string;
+  /** Owning organization / tenant, propagated to the capability invocation. */
+  readonly organizationId?: CanonicalId;
 }
 
 /**

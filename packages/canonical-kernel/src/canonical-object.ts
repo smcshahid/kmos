@@ -60,7 +60,7 @@ export interface GovernanceMetadata {
  * The canonical object envelope. `T` is the object-type-specific business body.
  * The kernel does not interpret `body`; the owning service does.
  */
-export interface CanonicalObject<T extends object = Record<string, unknown>> {
+export interface CanonicalObject<T extends object = object> {
   /** Permanent canonical identifier (KMOS-10030 §7). */
   readonly id: CanonicalId;
   /** Canonical object type, e.g. "Asset", "KnowledgeObject". */

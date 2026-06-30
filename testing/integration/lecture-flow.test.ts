@@ -13,7 +13,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { EventBus, newCanonicalId, type Projection, type StoredEvent } from '@kmos/canonical-kernel';
+import { EventBus, type Projection, type StoredEvent } from '@kmos/canonical-kernel';
 import { EventService } from '@kmos/events';
 import { IdentityService } from '@kmos/identity';
 import { AssetRegistryService } from '@kmos/assets';

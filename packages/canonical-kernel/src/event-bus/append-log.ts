@@ -20,7 +20,7 @@ import { KmosError } from '../errors.js';
 import type { CanonicalEvent } from '../event-envelope.js';
 
 /** A persisted event = the canonical event plus storage-assigned positions. */
-export interface StoredEvent<P extends object = Record<string, unknown>> {
+export interface StoredEvent<P extends object = object> {
   readonly sequence: number;
   readonly streamId: string;
   readonly streamVersion: number;

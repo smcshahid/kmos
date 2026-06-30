@@ -52,7 +52,7 @@ export interface EventGovernance {
  * reference canonical identifiers only and MUST NOT contain infrastructure
  * metadata (KMOS-0110 §5).
  */
-export interface CanonicalEvent<P extends object = Record<string, unknown>> {
+export interface CanonicalEvent<P extends object = object> {
   readonly identity: EventIdentity;
   readonly payload: P;
   readonly governance: EventGovernance;

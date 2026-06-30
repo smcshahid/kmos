@@ -27,6 +27,7 @@ import {
   newCanonicalId,
   type CanonicalEvent,
   type CanonicalId,
+  type CanonicalObject,
   type StoredEvent,
 } from '@kmos/canonical-kernel';
 
@@ -136,11 +137,11 @@ export class IdentityService {
     return event;
   }
 
-  private require<T extends { id: CanonicalId }>(
-    repo: CanonicalRepository<{ id: CanonicalId } & T>,
+  private require<T extends CanonicalObject>(
+    repo: CanonicalRepository<T>,
     id: CanonicalId,
     kind: string,
-  ): { id: CanonicalId } & T {
+  ): T {
     const found = repo.get(id);
     if (found === undefined) {
       throw new KmosError(`${kind} not found`, {

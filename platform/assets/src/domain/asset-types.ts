@@ -16,10 +16,12 @@ export type AssetType =
   | 'Video'
   | 'Audio'
   | 'Image'
+  | 'Media'
   | 'Document'
   | 'Transcript'
   | 'Dataset'
   | 'KnowledgePackage'
+  | 'Publication'
   | 'Other';
 
 /**

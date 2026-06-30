@@ -131,7 +131,7 @@ test('Administration: request + decide a governance approval, Governance records
 });
 
 test('Administration owns no canonical facts: every canonical event is produced by a platform service, never the app', async () => {
-  const { bus, identity, governance, capabilities, admin } = wire();
+  const { bus, identity, capabilities, admin } = wire();
 
   const org = await identity.createOrganization('Org');
   const user = await admin.createUser({ displayName: 'Op', organizationId: org.id });

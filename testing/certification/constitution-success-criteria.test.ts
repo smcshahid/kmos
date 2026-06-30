@@ -8,7 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { EventBus, type Projection, type StoredEvent } from '@kmos/canonical-kernel';
+import { EventBus, type Projection } from '@kmos/canonical-kernel';
 // the seven foundational engines:
 import { KnowledgeService } from '@kmos/knowledge';
 import { AssetRegistryService } from '@kmos/assets';

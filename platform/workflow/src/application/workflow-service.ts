@@ -449,7 +449,7 @@ export class WorkflowService {
     for (const action of actions) {
       await this.invoke(this.requireExecution(exec.id), `compensate:${action.forStepId}`, action.capabilityRef, action.input);
     }
-    let updated = this.transition(this.requireExecution(exec.id), 'Compensated', { clearWaiting: true });
+    const updated = this.transition(this.requireExecution(exec.id), 'Compensated', { clearWaiting: true });
     await this.publish('CompensationCompleted', exec.id, { executionId: exec.id, planId });
     await this.publish('WorkflowCompensated', exec.id, { executionId: exec.id });
     return updated;
@@ -506,6 +506,7 @@ export class WorkflowService {
       executionId: exec.id,
       stepId,
       correlationId: exec.id,
+      ...(exec.organizationId !== undefined ? { organizationId: exec.organizationId } : {}),
     };
     return this.invoker.invoke(capabilityRef, resolved, context);
   }

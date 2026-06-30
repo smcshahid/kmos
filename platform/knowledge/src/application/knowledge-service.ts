@@ -25,7 +25,6 @@
 
 import {
   EventBus,
-  EventCatalog,
   KmosError,
   canTransition,
   createCanonicalObject,
