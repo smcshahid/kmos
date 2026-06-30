@@ -1,0 +1,33 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/canonical-kernel" },
+    { "path": "packages/conformance" },
+    { "path": "platform/events" },
+    { "path": "platform/identity" },
+    { "path": "platform/assets" },
+    { "path": "platform/knowledge" },
+    { "path": "platform/governance" },
+    { "path": "platform/capability-registry" },
+    { "path": "platform/capability-runtime" },
+    { "path": "platform/workflow" },
+    { "path": "platform/configuration" },
+    { "path": "platform/search" },
+    { "path": "engines/platform-catalog" },
+    { "path": "engines/observability" },
+    { "path": "capabilities/reference-capabilities" },
+    { "path": "domains/media" },
+    { "path": "domains/language" },
+    { "path": "domains/publishing" },
+    { "path": "domains/preservation" },
+    { "path": "domains/ai-collaboration" },
+    { "path": "connectors/connector-framework" },
+    { "path": "applications/knowledge-studio" },
+    { "path": "applications/research-portal" },
+    { "path": "applications/archive-explorer" },
+    { "path": "applications/administration" },
+    { "path": "applications/public-api" },
+    { "path": "applications/learning-platform" },
+    { "path": "applications/api-server" }
+  ]
+}

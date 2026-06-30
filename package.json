@@ -1,0 +1,48 @@
+{
+  "name": "kmos",
+  "version": "1.0.0-rc.1",
+  "private": true,
+  "description": "Knowledge and Media Operating System - reference implementation (monorepo)",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/*",
+    "platform/*",
+    "engines/*",
+    "capabilities/*",
+    "domains/*",
+    "connectors/*",
+    "applications/*",
+    "sdk/*"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "tsc --build --clean",
+    "test": "node --experimental-strip-types --import ./tools/dev/register.mjs --test packages/*/test/*.test.ts engines/*/test/*.test.ts platform/*/test/*.test.ts capabilities/*/test/*.test.ts domains/*/test/*.test.ts connectors/*/test/*.test.ts applications/*/test/*.test.ts testing/**/*.test.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc --build",
+    "fitness": "node tools/fitness-checks/run.mjs",
+    "verify": "npm run lint && npm run typecheck && npm run fitness && npm test",
+    "verify:offline": "npm run fitness && npm test",
+    "demo": "node --experimental-strip-types --import ./tools/dev/register.mjs examples/knowledge-lifecycle-demo.mts",
+    "test:unit": "node --experimental-strip-types --import ./tools/dev/register.mjs --test packages/*/test/*.test.ts engines/*/test/*.test.ts platform/*/test/*.test.ts capabilities/*/test/*.test.ts domains/*/test/*.test.ts connectors/*/test/*.test.ts applications/*/test/*.test.ts",
+    "test:integration": "node --experimental-strip-types --import ./tools/dev/register.mjs --test testing/integration/*.test.ts testing/resilience/*.test.ts testing/concurrency/*.test.ts",
+    "test:contract": "node --experimental-strip-types --import ./tools/dev/register.mjs --test testing/contract/*.test.ts",
+    "test:security": "node --experimental-strip-types --import ./tools/dev/register.mjs --test testing/security/*.test.ts",
+    "test:perf": "node --experimental-strip-types --import ./tools/dev/register.mjs --test testing/performance/*.test.ts",
+    "test:certification": "node --experimental-strip-types --import ./tools/dev/register.mjs --test testing/certification/*.test.ts",
+    "seed": "node --experimental-strip-types --import ./tools/dev/register.mjs scripts/seed.mts",
+    "health": "node --experimental-strip-types --import ./tools/dev/register.mjs scripts/health.mts",
+    "serve": "node --experimental-strip-types --import ./tools/dev/register.mjs applications/api-server/src/index.ts",
+    "conformance": "node --experimental-strip-types --import ./tools/dev/register.mjs scripts/conformance.mts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.2"
+  }
+}
