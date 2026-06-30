@@ -1,0 +1,25 @@
+{
+  "name": "@kmos/administration",
+  "version": "1.0.0-rc.1",
+  "private": true,
+  "type": "module",
+  "description": "Administration (KMOS-0009): a THIN application that administers the institution by composing the Identity, Governance and Capability Registry platform services through their business APIs. Contains no business logic and owns no canonical objects or events.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@kmos/canonical-kernel": "*",
+    "@kmos/identity": "*",
+    "@kmos/governance": "*",
+    "@kmos/capability-registry": "*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --experimental-strip-types --import ../../tools/dev/register.mjs --test test/*.test.ts"
+  }
+}
