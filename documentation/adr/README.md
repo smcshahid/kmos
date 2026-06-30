@@ -1,0 +1,31 @@
+# Architecture Decision Records (ADRs)
+
+This directory holds the KMOS Architecture Decision Records in standard ADR
+format (Context / Decision / Status / Consequences). ADRs are distilled from the
+engineering decisions log `engineering/DECISIONS.md`, which remains the living
+source of truth; these files are the stable, citable architectural record.
+
+## Status legend
+
+- **Accepted** — confirmed and in force.
+- **Accepted-plan** — the decision/plan is accepted, but execution is pending
+  (e.g. gated on a CI environment).
+- **Proposed** — recommended default, awaiting confirmation.
+- **Superseded** — replaced by a later ADR.
+
+## Index
+
+| ADR | Title | Status |
+|---|---|---|
+| [0001](0001-typescript-postgres-modular-monolith.md) | TypeScript + Postgres-first + modular-monolith-first | Accepted |
+| [0002](0002-canonical-kernel-single-source-of-truth.md) | Canonical kernel as single source of truth | Accepted |
+| [0003](0003-ports-and-adapters.md) | Ports and adapters (infrastructure behind ports) | Accepted |
+| [0004](0004-async-eventlog-kernel-migration.md) | Async EventLog kernel migration (KEP-001) | Accepted-plan |
+| [0005](0005-event-bus-enforced-attribution-authorization.md) | Event-bus enforced attribution + authorization | Accepted (mechanism) |
+
+## Source decisions
+
+These ADRs consolidate decisions D-A..D-F, D-005/D-006, MED-5, CRIT-2, and the
+KEP-001 kernel evolution plan. See `engineering/DECISIONS.md`,
+`engineering/review/06-REMEDIATION-CERTIFICATION-REPORT.md`, and
+`engineering/review/07-KERNEL-EVOLUTION-PLAN.md` for full history and evidence.
