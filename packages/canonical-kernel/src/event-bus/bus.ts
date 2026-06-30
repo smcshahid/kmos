@@ -20,7 +20,7 @@ import { validate } from '../schema/validate.js';
 import { EVENT_ENVELOPE_SCHEMA } from '../schema/envelope-schema.js';
 import { defaultEventCatalog, EventCatalog } from '../schema/event-catalog.js';
 import { InMemoryEventLog, type EventLog, type StoredEvent } from './append-log.js';
-import { ALLOW_ALL, type Authorizer } from '../security.js';
+import { ALLOW_ALL, attributeFromContext, type Authorizer } from '../security.js';
 
 export type EventHandler = (stored: StoredEvent) => void | Promise<void>;
 
@@ -124,10 +124,13 @@ export class EventBus {
 
   /** Validate, persist to the append-only log, then dispatch to subscribers. */
   async publish(event: CanonicalEvent, options: PublishOptions = {}): Promise<StoredEvent> {
-    this.validateEvent(event);
-    this.enforce(event);
-    const streamId = options.streamId ?? event.identity.subjectId ?? event.identity.eventId;
-    const stored = await this.log.append(streamId, event, options.expectedVersion === undefined ? undefined : { expectedVersion: options.expectedVersion });
+    // Stamp attribution from the ambient CallContext (CRIT-2) before validation
+    // and enforcement, so the persisted fact carries its acting actor/tenant.
+    const attributed = attributeFromContext(event);
+    this.validateEvent(attributed);
+    this.enforce(attributed);
+    const streamId = options.streamId ?? attributed.identity.subjectId ?? attributed.identity.eventId;
+    const stored = await this.log.append(streamId, attributed, options.expectedVersion === undefined ? undefined : { expectedVersion: options.expectedVersion });
     await this.dispatch(stored);
     return stored;
   }
