@@ -1,0 +1,22 @@
+{
+  "name": "@kmos/identity",
+  "version": "1.0.0-rc.1",
+  "private": true,
+  "type": "module",
+  "description": "KMOS Identity Service (KMOS-0206): canonical identity, roles, permissions, delegation, authentication and authorization for human and non-human actors.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@kmos/canonical-kernel": "*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --experimental-strip-types --import ../../tools/dev/register.mjs --test test/*.test.ts"
+  }
+}
