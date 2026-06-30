@@ -25,6 +25,7 @@ source of truth; these files are the stable, citable architectural record.
 | [0006](0006-http-api-server-and-reference-ui.md) | HTTP API server + reference web UI | Accepted |
 | [0007](0007-conformance-kit.md) | KMOS Conformance Kit (ecosystem integrity) | Accepted |
 | [0008](0008-align-canonical-generic-defaults.md) | Align canonical generic defaults with their bound (type soundness) | Accepted |
+| [0009](0009-async-eventlog-kernel-migration.md) | Asynchronous EventLog kernel migration (KEP-001, resolves CRIT-1) | Accepted |
 
 ## Source decisions
 

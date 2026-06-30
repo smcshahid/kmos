@@ -43,6 +43,12 @@ PROPOSED — awaiting human approval · ACCEPTED — confirmed · SUPERSEDED
 **Decision:** Align the default with the bound (`= object`); bound unchanged. Compile-time only — no runtime/event-format/data change. Safe: nothing indexes `body`/`payload` by arbitrary key. Also complete the canonical `AssetType` union with `'Media'`/`'Publication'` (KMOS-0202). Non-canonical fixes same pass: regeneralize `IdentityService.require`; add optional `InvocationContext.organizationId`; minor lint.
 **Consequence:** Clean `tsc`; CI static/tests/database green; board-review R-A closed. Canonical bodies stay strongly-typed interfaces; arbitrary-key body access disallowed by convention. Taken pre-Architecture-Freeze v1.0.
 
+## D-008 — Asynchronous EventLog kernel migration (KEP-001, resolves CRIT-1)
+**Status:** ACCEPTED (implemented; merged to main #1; CI green incl. real-Postgres). Recorded as ADR-0009.
+**Context:** The kernel `EventLog` port was synchronous, so the production `PostgresEventLog` had to implement a *separate* `AsyncEventLog` — the authoritative port was not database-satisfiable (CRIT-1). A typechecked + Postgres CI environment (now present) makes the async propagation safe to land atomically.
+**Decision (KEP-D1/D2):** Make `EventLog` + `replay()` async; `bus.publish` awaits append. Adopt the **await-everywhere** contract — every emit path awaits publication; fire-and-forget is banned by fitness rule (5), with one justified constructor exemption. `InMemoryEventLog` and `PostgresEventLog` implement the same async port (`AsyncEventLog` → deprecated alias). Land atomically, gated by green tsc + tests + a real-Postgres contract run. No persisted-format change; no data migration.
+**Consequence:** CRIT-1 + HIGH-1 closed with evidence (real-PG contract green in CI). Determinism strengthened (publication-ordering test). Adversarial review caught 6 production await gaps a stale incremental build had hidden — all fixed under a clean build. Ships `PgSqlClient` production wiring. Architecture Freeze v1.0 now eligible on this axis, pending human sign-off.
+
 ---
 
 ## Decisions REQUIRING HUMAN APPROVAL (irreversible / product-level)
