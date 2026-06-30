@@ -11,12 +11,11 @@
  *     unique-violation (concurrent writer, or a stale `expectedVersion`) is
  *     surfaced as a kernel `KmosError` of category 'Conflict' (retryable).
  *
- * Sync-vs-async: the in-process `EventLog` port is synchronous (callers like
- * `replay()` iterate results directly). A real database is async, so this
- * adapter implements {@link AsyncEventLog} — the same method set as `EventLog`
- * with every return wrapped in a Promise. The reusable EventLog contract test
- * awaits every call, so it validates BOTH the sync `InMemoryEventLog` and this
- * async adapter against one set of semantics.
+ * One async port (CRIT-1 resolved, KEP-001): the kernel `EventLog` port is now
+ * asynchronous, so this adapter implements the *same* kernel port directly —
+ * there is no separate production interface. The reusable EventLog contract test
+ * awaits every call and runs against BOTH `InMemoryEventLog` and this adapter,
+ * proving one port satisfied by two adapters.
  *
  * Storage replaceability (constitution §2): this adapter lives under
  * `infrastructure/` and depends ONLY on the minimal {@link SqlClient} PORT
@@ -29,6 +28,7 @@ import { KmosError } from '@kmos/canonical-kernel';
 import type {
   AppendOptions,
   CanonicalEvent,
+  EventLog,
   StoredEvent,
 } from '@kmos/canonical-kernel';
 
@@ -51,17 +51,11 @@ export interface SqlClient {
 }
 
 /**
- * The kernel EventLog port, made async: same methods, Promise-wrapped returns.
- * A database adapter cannot satisfy the synchronous `EventLog` directly, so it
- * satisfies this; the contract test awaits results and thus covers both shapes.
+ * @deprecated The kernel `EventLog` port is asynchronous as of KEP-001, so a
+ * database adapter implements it directly. This alias preserves the name for one
+ * RC for any out-of-tree consumer that referenced it; it is removed in v1.1.
  */
-export interface AsyncEventLog {
-  append(streamId: string, event: CanonicalEvent, options?: AppendOptions): Promise<StoredEvent>;
-  currentVersion(streamId: string): Promise<number>;
-  read(fromSequence?: number): Promise<readonly StoredEvent[]>;
-  readStream(streamId: string): Promise<readonly StoredEvent[]>;
-  size(): Promise<number>;
-}
+export type AsyncEventLog = EventLog;
 
 /** Postgres SQLSTATE for unique_violation. */
 const UNIQUE_VIOLATION = '23505';
@@ -121,7 +115,7 @@ function rowToStored(row: EventRow): StoredEvent {
  * Postgres-backed EventLog. Construct with an injected {@link SqlClient}; run
  * {@link EVENTS_TABLE_DDL} once (migration) before first use.
  */
-export class PostgresEventLog implements AsyncEventLog {
+export class PostgresEventLog implements EventLog {
   private readonly sql: SqlClient;
 
   constructor(sql: SqlClient) {

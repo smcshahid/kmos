@@ -46,15 +46,15 @@ export interface ReplayOptions {
  * Rebuild a projection by replaying the immutable log. Returns the resulting
  * state plus a ReplaySession describing the run. The log is read-only here.
  */
-export function replay<S>(
+export async function replay<S>(
   log: EventLog,
   projection: Projection<S>,
   options: ReplayOptions = {},
-): ReplayResult<S> {
+): Promise<ReplayResult<S>> {
   const clock = options.now ?? (() => new Date().toISOString());
   const startedAt = clock();
   const from = options.fromSequence ?? 1;
-  const events = log.read(from);
+  const events = await log.read(from);
   const upper = options.toSequence ?? Number.POSITIVE_INFINITY;
 
   let state = projection.initial();
