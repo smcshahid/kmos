@@ -22,6 +22,9 @@ source of truth; these files are the stable, citable architectural record.
 | [0003](0003-ports-and-adapters.md) | Ports and adapters (infrastructure behind ports) | Accepted |
 | [0004](0004-async-eventlog-kernel-migration.md) | Async EventLog kernel migration (KEP-001) | Accepted-plan |
 | [0005](0005-event-bus-enforced-attribution-authorization.md) | Event-bus enforced attribution + authorization | Accepted (mechanism) |
+| [0006](0006-http-api-server-and-reference-ui.md) | HTTP API server + reference web UI | Accepted |
+| [0007](0007-conformance-kit.md) | KMOS Conformance Kit (ecosystem integrity) | Accepted |
+| [0008](0008-align-canonical-generic-defaults.md) | Align canonical generic defaults with their bound (type soundness) | Accepted |
 
 ## Source decisions
 
