@@ -1,0 +1,22 @@
+{
+  "name": "@kmos/assets",
+  "version": "1.0.0-rc.1",
+  "private": true,
+  "type": "module",
+  "description": "KMOS Asset Registry Service (KMOS-0202): authoritative institutional evidence service.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@kmos/canonical-kernel": "*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --experimental-strip-types --import ../../tools/dev/register.mjs --test test/*.test.ts"
+  }
+}
