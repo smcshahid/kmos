@@ -1,0 +1,25 @@
+{
+  "name": "@kmos/research-portal",
+  "version": "1.0.0-rc.1",
+  "private": true,
+  "type": "module",
+  "description": "Research Portal (KMOS-0009): a THIN application that composes the Search, Knowledge and Asset Registry platform services to support discovery, evidence-backed question answering and citation lookup. Contains no business logic and owns no canonical objects.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@kmos/canonical-kernel": "*",
+    "@kmos/knowledge": "*",
+    "@kmos/search": "*",
+    "@kmos/assets": "*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --experimental-strip-types --import ../../tools/dev/register.mjs --test test/*.test.ts"
+  }
+}
