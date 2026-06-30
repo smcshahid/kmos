@@ -16,10 +16,12 @@ Storage, message broker, identity provider, and AI models are accessed through *
 Import all canonical objects, the event envelope, schemas, and the event catalog from `@kmos/canonical-kernel`. **Never redefine a canonical object or invent an event name.** New canonical types/events are added to the kernel via review, never ad hoc (KMOS-9999 §7; risk R-02).
 
 ## 4. Dependency direction (enforced)
-`applications → domains → capabilities → engines/platform → packages`. Imports may only point down the stack. No platform service imports another platform service's internals — cross-service contact is **canonical events + business APIs** only. Reverse dependencies require a logged ADR in `architecture/adr/`.
+`applications → domains → capabilities → engines/platform → packages`. Imports may only point down the stack. No platform service imports another platform service's internals — cross-service contact is **canonical events + business APIs** only. Reverse dependencies require a logged ADR in `documentation/adr/` (the canonical ADR home; `architecture/` holds derived diagrams only).
 
 ## 5. Events
 Every meaningful business change publishes a canonical event (past-tense fact). Events are immutable, validated before publication, idempotently consumed, and replayable. Business logic never lives in events, workflows, or applications — only in capabilities/domain services.
+
+**Await-everywhere publication (KEP-001 / Decision KEP-D1).** The kernel `EventLog` port is asynchronous (one port, satisfied by the in-memory and Postgres adapters alike). Every event-emitting write path is `async` and **must `await` publication** — `void this.emit(...)` / `void this.publish(...)` (fire-and-forget) is prohibited and enforced by architecture-fitness rule (5). The sole exception is a constructor (which cannot `await`); it must carry an explicit `fitness-allow-fire-and-forget` justification. This makes in-process semantics identical to real async storage and keeps event capture deterministic.
 
 ## 6. Determinism & replay
 No clocks, randomness, or IO in deterministic cores (workflow coordination, projections). Push non-determinism to adapters. Every service ships replay tests.

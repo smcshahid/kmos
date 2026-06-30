@@ -20,10 +20,10 @@ async function main(): Promise<void> {
   const org = await identity.createOrganization('Sample Institute');
   const editor = await identity.createIdentity({ kind: 'Human', displayName: 'Sample Editor', organizationId: org.id });
 
-  const concepts = ['Sincerity', 'Patience', 'Mercy'].map((name) =>
+  const concepts = await Promise.all(['Sincerity', 'Patience', 'Mercy'].map((name) =>
     knowledge.createKnowledge({ category: 'Concept', canonicalName: name, definition: `The concept of ${name}.`, primaryLanguage: 'en', organizationId: org.id }),
-  );
-  for (const c of concepts) knowledge.addVocabulary(c.id, { language: 'ar', preferredTerm: c.body.canonicalName });
+  ));
+  for (const c of concepts) await knowledge.addVocabulary(c.id, { language: 'ar', preferredTerm: c.body.canonicalName });
 
   const doc = await assets.registerAsset({
     assetType: 'Document', mediaType: 'text/plain', displayName: 'Seed source document', organizationId: org.id,
@@ -36,7 +36,7 @@ async function main(): Promise<void> {
     editor: editor.id,
     concepts: concepts.map((c) => ({ id: c.id, name: c.body.canonicalName })),
     asset: doc.id,
-    events: bus.eventLog.size(),
+    events: await bus.eventLog.size(),
   }, null, 2));
   console.log('\n✅ Seed complete. Use these ids with the reference applications / demo.');
 }

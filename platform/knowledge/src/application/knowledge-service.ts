@@ -160,7 +160,7 @@ export class KnowledgeService {
    * callers must consciously resolve a clash; getConcept lets them find the
    * existing one.
    */
-  createKnowledge(input: CreateKnowledgeInput): KnowledgeObject {
+  async createKnowledge(input: CreateKnowledgeInput): Promise<KnowledgeObject> {
     if (input.category === 'Concept') {
       const existing = this.findConcept(
         input.canonicalName,
@@ -208,7 +208,7 @@ export class KnowledgeService {
     this.knowledge.add(ko);
 
     const eventType = input.category === 'Concept' ? 'ConceptCreated' : 'KnowledgeCreated';
-    void this.publish(eventType, ko.id, {
+    await this.publish(eventType, ko.id, {
       knowledgeId: ko.id,
       category: ko.body.category,
       canonicalName: ko.body.canonicalName,
@@ -224,14 +224,14 @@ export class KnowledgeService {
    * (corrections never overwrite). Returns the new head. Publishes
    * KnowledgeUpdated.
    */
-  updateKnowledge(
+  async updateKnowledge(
     id: CanonicalId,
     changes: Partial<Pick<KnowledgeBody, 'canonicalName' | 'definition' | 'primaryLanguage'>> & {
       readonly evidenceRefs?: readonly CanonicalId[];
       readonly confidence?: number;
     },
     reason: string,
-  ): KnowledgeObject {
+  ): Promise<KnowledgeObject> {
     const head = this.requireKnowledge(id);
     const provenance =
       changes.evidenceRefs !== undefined || changes.confidence !== undefined
@@ -257,7 +257,7 @@ export class KnowledgeService {
       body: nextBody,
     };
     this.knowledge.appendVersion(next);
-    void this.publish('KnowledgeUpdated', id, {
+    await this.publish('KnowledgeUpdated', id, {
       knowledgeId: id,
       version: next.version,
       reason,
@@ -285,7 +285,7 @@ export class KnowledgeService {
    * Concept, Vocabulary, Collection or another Relationship); otherwise the
    * relationship is rejected to prevent broken/orphaned edges.
    */
-  createRelationship(input: CreateRelationshipInput): RelationshipObject {
+  async createRelationship(input: CreateRelationshipInput): Promise<RelationshipObject> {
     if (!this.existsAnywhere(input.sourceId)) {
       throw new KmosError(`Relationship source does not exist: ${input.sourceId}`, {
         category: 'NotFound',
@@ -324,7 +324,7 @@ export class KnowledgeService {
       now: this.now(),
     });
     this.relationships.add(rel);
-    void this.publish('RelationshipEstablished', rel.id, {
+    await this.publish('RelationshipEstablished', rel.id, {
       relationshipId: rel.id,
       relation: input.relation,
       sourceId: input.sourceId,
@@ -335,11 +335,11 @@ export class KnowledgeService {
   }
 
   /** Append a new version of a Relationship (immutable history, like knowledge). */
-  updateRelationship(
+  async updateRelationship(
     id: CanonicalId,
     changes: { readonly confidence?: number; readonly evidenceRefs?: readonly CanonicalId[] },
     reason: string,
-  ): RelationshipObject {
+  ): Promise<RelationshipObject> {
     const head = this.relationships.head(id);
     if (!head) throw this.notFound(id, 'relationship');
     const provenance = this.provenanceOf(
@@ -354,7 +354,7 @@ export class KnowledgeService {
       body: { ...head.body, provenance },
     };
     this.relationships.appendVersion(next);
-    void this.publish('RelationshipEstablished', id, {
+    await this.publish('RelationshipEstablished', id, {
       relationshipId: id,
       version: next.version,
       reason,
@@ -380,7 +380,7 @@ export class KnowledgeService {
    * KnowledgeObject. The KnowledgeObject is NOT duplicated — multiple languages
    * reference the same KO. Publishes VocabularyExpanded.
    */
-  addVocabulary(knowledgeId: CanonicalId, input: AddVocabularyInput): VocabularyObject {
+  async addVocabulary(knowledgeId: CanonicalId, input: AddVocabularyInput): Promise<VocabularyObject> {
     this.requireKnowledge(knowledgeId);
     const body: VocabularyBody = {
       knowledgeId,
@@ -403,7 +403,7 @@ export class KnowledgeService {
       now: this.now(),
     });
     this.vocabulary.add(vocab);
-    void this.publish('VocabularyExpanded', vocab.id, {
+    await this.publish('VocabularyExpanded', vocab.id, {
       vocabularyId: vocab.id,
       knowledgeId,
       language: input.language,
@@ -423,7 +423,7 @@ export class KnowledgeService {
    * Create a Collection grouping existing knowledge objects. Members must exist
    * (no orphaned membership). Publishes OntologyExtended.
    */
-  createCollection(name: string, memberIds: readonly CanonicalId[]): CollectionObject {
+  async createCollection(name: string, memberIds: readonly CanonicalId[]): Promise<CollectionObject> {
     for (const m of memberIds) {
       if (!this.existsAnywhere(m)) {
         throw new KmosError(`Collection member does not exist: ${m}`, {
@@ -449,7 +449,7 @@ export class KnowledgeService {
       now: this.now(),
     });
     this.collections.add(collection);
-    void this.publish('OntologyExtended', collection.id, {
+    await this.publish('OntologyExtended', collection.id, {
       collectionId: collection.id,
       name,
       memberCount: memberIds.length,
@@ -466,7 +466,7 @@ export class KnowledgeService {
    * Publishes KnowledgeApproved when reaching Approved; the actual approval
    * decision is expected to be governed externally (no policy here).
    */
-  advanceLifecycle(id: CanonicalId, to: LifecycleState): KnowledgeObject {
+  async advanceLifecycle(id: CanonicalId, to: LifecycleState): Promise<KnowledgeObject> {
     const head = this.requireKnowledge(id);
     if (!canTransition(head.lifecycle, to)) {
       throw new KmosError(
@@ -487,11 +487,11 @@ export class KnowledgeService {
     };
     this.knowledge.appendVersion(next);
     if (to === 'Approved') {
-      void this.publish('KnowledgeApproved', id, { knowledgeId: id, version: next.version }, next.organizationId);
+      await this.publish('KnowledgeApproved', id, { knowledgeId: id, version: next.version }, next.organizationId);
     } else if (to === 'Archived') {
-      void this.publish('KnowledgeArchived', id, { knowledgeId: id, version: next.version }, next.organizationId);
+      await this.publish('KnowledgeArchived', id, { knowledgeId: id, version: next.version }, next.organizationId);
     } else {
-      void this.publish('KnowledgeUpdated', id, {
+      await this.publish('KnowledgeUpdated', id, {
         knowledgeId: id,
         version: next.version,
         lifecycle: to,
@@ -505,7 +505,7 @@ export class KnowledgeService {
    * Convenience: drive a KnowledgeObject to Approved through the approval path,
    * skipping steps the canonical lifecycle permits. Publishes KnowledgeApproved.
    */
-  approve(id: CanonicalId): KnowledgeObject {
+  async approve(id: CanonicalId): Promise<KnowledgeObject> {
     let current = this.requireKnowledge(id);
     if (current.lifecycle === 'Approved' || current.lifecycle === 'Published') return current;
     const startIndex = Math.max(0, APPROVAL_PATH.indexOf(current.lifecycle));
@@ -513,17 +513,17 @@ export class KnowledgeService {
     for (let i = startIndex + 1; i <= approvedIndex; i += 1) {
       const to = APPROVAL_PATH[i]!;
       if (!canTransition(current.lifecycle, to)) continue;
-      current = this.advanceLifecycle(id, to);
+      current = await this.advanceLifecycle(id, to);
     }
     if (current.lifecycle !== 'Approved') {
       // Fallback: direct transition if the path-stepping could not land on it.
-      current = this.advanceLifecycle(id, 'Approved');
+      current = await this.advanceLifecycle(id, 'Approved');
     }
     return current;
   }
 
   /** Archive a KnowledgeObject (publishes KnowledgeArchived). */
-  archive(id: CanonicalId): KnowledgeObject {
+  async archive(id: CanonicalId): Promise<KnowledgeObject> {
     return this.advanceLifecycle(id, 'Archived');
   }
 
@@ -543,8 +543,8 @@ export class KnowledgeService {
    * kernel replay engine — proving the projection is derivable from the
    * authoritative event history (KMOS-0201 §12; Constitution §6).
    */
-  buildGraphFromEvents(): KnowledgeGraph {
-    const { state } = replay(this.bus.eventLog, graphProjection, { now: this.now });
+  async buildGraphFromEvents(): Promise<KnowledgeGraph> {
+    const { state } = await replay(this.bus.eventLog, graphProjection, { now: this.now });
     return graphFromState(state);
   }
 

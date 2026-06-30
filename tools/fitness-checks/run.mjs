@@ -13,6 +13,12 @@
  *      infrastructure (e.g. 'pg') and nothing from upper layers.
  *   4. No storage/infra imports outside an `infrastructure/` directory
  *      (ports-and-adapters; domain cores stay infrastructure-free).
+ *   5. Await-everywhere publication (KEP-001 Decision KEP-D1): no fire-and-forget
+ *      canonical emits (`void this.emit(...)` / `void this.publish(...)`) in
+ *      platform/** or domains/** write paths — they defer dispatch to a later
+ *      microtask and break the publication-ordering contract. The single
+ *      sanctioned exception is a constructor (cannot `await`), which must carry
+ *      an explicit `fitness-allow-fire-and-forget` comment.
  *
  * Zero dependencies; pure Node. Exit code 1 on any violation.
  */
@@ -139,6 +145,25 @@ for (const file of files) {
       const target = m?.[1];
       if (target && target !== 'canonical-kernel' && target !== myService && depLayer === 'platform') {
         violations.push(`[cross-service] ${rel} imports another platform service '${spec}' (use events/APIs)`);
+      }
+    }
+  }
+
+  // (5) await-everywhere publication contract (KEP-D1): forbid fire-and-forget
+  // canonical emits in service/domain write paths. An explicit
+  // `fitness-allow-fire-and-forget` comment on the emit line or within the three
+  // preceding lines waives it (the sole sanctioned case: a constructor, which
+  // cannot `await`).
+  if (layer === 'platform' || layer === 'domains') {
+    const lines = src.split('\n');
+    for (let i = 0; i < lines.length; i += 1) {
+      const m = /\bvoid\s+this\.(emit|publish|emitLifecycle)\s*\(/.exec(lines[i]);
+      if (m === null) continue;
+      const window = lines.slice(Math.max(0, i - 3), i + 1).join('\n');
+      if (!/fitness-allow-fire-and-forget/.test(window)) {
+        violations.push(
+          `[await-everywhere] ${rel}:${i + 1} fire-and-forget 'void this.${m[1]}(…)' — await it (KEP-D1) or justify with a fitness-allow-fire-and-forget comment`,
+        );
       }
     }
   }

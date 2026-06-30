@@ -56,7 +56,7 @@ test('event migration: backward-compatible evolution is accepted, breaking chang
   const svc = new EventService({ now: fixedNow });
 
   // --- 1) Register v1.0 and publish some v1.0 events. ---
-  svc.registerEventSchema({ eventType: 'AssetRegistered', version: '1.0', schema: SCHEMA_V1_0 });
+  await svc.registerEventSchema({ eventType: 'AssetRegistered', version: '1.0', schema: SCHEMA_V1_0 });
 
   const idA = newCanonicalId('Asset');
   const idB = newCanonicalId('Asset');
@@ -82,12 +82,12 @@ test('event migration: backward-compatible evolution is accepted, breaking chang
   assert.doesNotThrow(() => svc.validateEvent(v1eventB));
 
   // --- 2) Backward-compatible v1.1 (adds optional field) is ACCEPTED. ---
-  assert.doesNotThrow(() =>
+  await assert.doesNotReject(() =>
     svc.registerEventSchema({ eventType: 'AssetRegistered', version: '1.1', schema: SCHEMA_V1_1 }),
   );
 
   // --- 3) Incompatible v2.0 (adds required field) is REJECTED. ---
-  assert.throws(
+  await assert.rejects(
     () => svc.registerEventSchema({ eventType: 'AssetRegistered', version: '2.0', schema: SCHEMA_V2_0 }),
     /not BACKWARD compatible/,
     'adding a required field must be rejected as a breaking change',

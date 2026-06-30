@@ -70,7 +70,7 @@ test('Preservation: verifies integrity, builds evidence, reaches Preserved, emit
   assert.equal(res.failedAssetIds.length, 0);
 
   // PreservationCompleted emitted on the shared bus for each preserved asset.
-  const types = bus.eventLog.read(1).map((s: StoredEvent) => s.event.identity.type);
+  const types = (await bus.eventLog.read(1)).map((s: StoredEvent) => s.event.identity.type);
   const completed = types.filter((t) => t === 'PreservationCompleted');
   assert.equal(completed.length, 2);
 });
@@ -110,7 +110,7 @@ test('Preservation: an asset whose bytes are tampered is reported as integrity f
 
   // An IntegrityFailed event was published and PreservationCompleted was NOT
   // emitted for the tampered asset.
-  const events = bus.eventLog.read(1);
+  const events = await bus.eventLog.read(1);
   assert.ok(events.some((s) => s.event.identity.type === 'IntegrityFailed'));
   const completedForTampered = events.filter(
     (s) => s.event.identity.type === 'PreservationCompleted' && s.event.identity.subjectId === tampered.id,

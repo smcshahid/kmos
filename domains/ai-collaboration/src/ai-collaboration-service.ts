@@ -265,16 +265,16 @@ export class AiCollaborationService {
     // Route the human decision through Governance: request, then decide. The
     // Approval is keyed to the contribution as its subject, so the audit trail
     // links the governance decision to the AI output.
-    const approval = this.governance.requestApproval({
+    const approval = await this.governance.requestApproval({
       subjectId: input.contributionId,
       reviewers: [input.reviewer],
       mode: 'Single',
     });
 
     if (input.verdict === 'Approved') {
-      this.governance.grantApproval(approval.id, input.reviewer, reason);
+      await this.governance.grantApproval(approval.id, input.reviewer, reason);
     } else {
-      this.governance.rejectApproval(approval.id, input.reviewer, reason);
+      await this.governance.rejectApproval(approval.id, input.reviewer, reason);
     }
 
     const approved = input.verdict === 'Approved';

@@ -167,8 +167,8 @@ export class WorkflowService {
     return this.executions.get(id);
   }
 
-  getExecutionHistory(id: CanonicalId): readonly CanonicalEvent[] {
-    return this.bus.eventLog.readStream(id).map((s) => s.event);
+  async getExecutionHistory(id: CanonicalId): Promise<readonly CanonicalEvent[]> {
+    return (await this.bus.eventLog.readStream(id)).map((s) => s.event);
   }
 
   /**
@@ -481,9 +481,9 @@ export class WorkflowService {
    * Reconstruct an execution's state purely from its recorded events via the
    * kernel replay engine. This NEVER re-runs capabilities; it folds history.
    */
-  reconstructExecution(executionId: CanonicalId): ExecutionState {
+  async reconstructExecution(executionId: CanonicalId): Promise<ExecutionState> {
     const projection = executionProjection(executionId);
-    return replay(this.bus.eventLog, projection, { now: this.now }).state;
+    return (await replay(this.bus.eventLog, projection, { now: this.now })).state;
   }
 
   // --- Internals ---

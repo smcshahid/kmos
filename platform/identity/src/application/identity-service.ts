@@ -537,7 +537,7 @@ export class IdentityService {
   // --- introspection / audit ----------------------------------------------
 
   /** The append-only canonical event history produced by this service. */
-  getEventHistory(): readonly StoredEvent[] {
+  async getEventHistory(): Promise<readonly StoredEvent[]> {
     return this.bus.eventLog.read();
   }
 

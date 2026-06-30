@@ -32,7 +32,7 @@ test('Media domain preserves a lecture: import -> transcribe (workflow+runtime) 
   assert.ok(lineage.ancestors.includes(res.audioAssetId));
 
   // Domain events landed on the shared bus.
-  const types = new Set(bus.eventLog.read(1).map((s: StoredEvent) => s.event.identity.type));
+  const types = new Set((await bus.eventLog.read(1)).map((s: StoredEvent) => s.event.identity.type));
   assert.ok(types.has('LectureImported'));
   assert.ok(types.has('LectureProcessed'));
   assert.ok(types.has('AssetRegistered'));

@@ -158,7 +158,7 @@ export class LanguageDomainService {
     for (const c of concepts) {
       // One language-independent Concept KnowledgeObject (reuse if present).
       const existing = this.knowledge.getConcept(c.canonicalName, sourceLanguage, input.organizationId);
-      const concept = existing ?? this.knowledge.createKnowledge({
+      const concept = existing ?? await this.knowledge.createKnowledge({
         category: 'Concept', canonicalName: c.canonicalName, definition: c.definition,
         primaryLanguage: sourceLanguage,
         ...(input.organizationId !== undefined ? { organizationId: input.organizationId } : {}),
@@ -166,7 +166,7 @@ export class LanguageDomainService {
       conceptIds.push(concept.id);
 
       // Source-language vocabulary entry on the same KnowledgeObject.
-      const srcVocab = this.knowledge.addVocabulary(concept.id, { language: sourceLanguage, preferredTerm: c.canonicalName });
+      const srcVocab = await this.knowledge.addVocabulary(concept.id, { language: sourceLanguage, preferredTerm: c.canonicalName });
       vocabularyIds.push(srcVocab.id);
       await this.emit('VocabularyLearned', concept.id, {
         knowledgeId: concept.id, language: sourceLanguage, preferredTerm: c.canonicalName,
@@ -176,7 +176,7 @@ export class LanguageDomainService {
       // duplicate KnowledgeObject) when a translation was requested.
       if (wantsTranslation) {
         const targetLanguage = input.targetLanguage as string;
-        const tgtVocab = this.knowledge.addVocabulary(concept.id, {
+        const tgtVocab = await this.knowledge.addVocabulary(concept.id, {
           language: targetLanguage, preferredTerm: `[${targetLanguage}] ${c.canonicalName}`,
         });
         vocabularyIds.push(tgtVocab.id);

@@ -62,7 +62,7 @@ test('end-to-end: lecture -> knowledge -> publication -> preservation on a share
   assert.ok(pres.preservedAssetIds.includes(lecture.audioAssetId));
 
   // --- One shared institutional history across every domain ---
-  const types = new Set(bus.eventLog.read(1).map((s: StoredEvent) => s.event.identity.type));
+  const types = new Set((await bus.eventLog.read(1)).map((s: StoredEvent) => s.event.identity.type));
   for (const expected of [
     'LectureImported', 'LectureProcessed',          // media
     'TranscriptCorrected', 'VocabularyLearned',     // language

@@ -39,7 +39,7 @@ function evt(opts: { actorId?: string; organizationId?: string } = {}): Canonica
 test('attribution enforced: an event without actorId is rejected (KMOS-9999 §15)', async () => {
   const bus = new EventBus({ requireActor: true });
   await assert.rejects(() => bus.publish(evt()), /actor/i);
-  assert.equal(bus.eventLog.size(), 0, 'unattributed fact never entered history');
+  assert.equal(await bus.eventLog.size(), 0, 'unattributed fact never entered history');
 });
 
 test('authorization enforced: a policy denial rejects publication (KMOS-0190 PDP)', async () => {
@@ -68,7 +68,7 @@ test('tenancy enforced: a tenant-scoped policy rejects cross-organization writes
 test('non-enforcing default is backward compatible (no actor required)', async () => {
   const bus = new EventBus(); // defaults: requireActor=false, ALLOW_ALL
   const stored = await bus.publish(evt());
-  assert.equal(bus.eventLog.size(), 1);
+  assert.equal(await bus.eventLog.size(), 1);
   assert.equal(stored.event.identity.actorId, undefined);
 });
 
@@ -81,7 +81,7 @@ test('audit attribution: correlated facts all carry the acting identity', async 
     payload: {}, actorId: EDITOR, organizationId: ORG_A, causedBy: root,
   });
   await bus.publish(caused);
-  for (const s of bus.eventLog.read(1)) {
+  for (const s of await bus.eventLog.read(1)) {
     assert.equal(s.event.identity.actorId, EDITOR, 'every fact is attributable to an authenticated actor');
   }
 });

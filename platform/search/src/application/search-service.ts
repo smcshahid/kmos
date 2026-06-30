@@ -100,11 +100,14 @@ export class SearchService {
     this.bus.subscribe({
       subscriber: SUBSCRIBER,
       eventTypes: INDEXED_EVENT_TYPES,
-      handler: (stored: StoredEvent) => {
-        this.indexStored(stored);
+      handler: async (stored: StoredEvent) => {
+        await this.indexStored(stored);
       },
     });
 
+    // fitness-allow-fire-and-forget: a constructor cannot `await` (KEP-D1
+    // exception). IndexCreated is a non-load-bearing lifecycle marker with no
+    // subscriber or assertion; its emission ordering does not affect behavior.
     void this.emit('IndexCreated', this.indexObject.id, {
       indexName: this.indexName,
       index: this.indexObject.id,
@@ -132,13 +135,13 @@ export class SearchService {
   // ---- Indexing (idempotent, upsert-by-subject-id) ----
 
   /** Project a stored event into the active index and emit an indexed event. */
-  private indexStored(stored: StoredEvent): void {
+  private async indexStored(stored: StoredEvent): Promise<void> {
     if (!INDEXED_EVENT_TYPES.includes(stored.event.identity.type)) return;
     this.indexInto(this.store, stored);
     this.indexObject = this.newIndexObject(this.store.size(), stored.sequence);
     const subjectId = stored.event.identity.subjectId ?? stored.event.identity.eventId;
     const eventType = stored.event.identity.type === 'AssetRegistered' ? 'AssetIndexed' : 'KnowledgeIndexed';
-    void this.emit(eventType, subjectId, { subjectId, sourceEventType: stored.event.identity.type });
+    await this.emit(eventType, subjectId, { subjectId, sourceEventType: stored.event.identity.type });
   }
 
   /** Pure index write: project + embed + upsert (idempotent by subject id). */
@@ -249,7 +252,7 @@ export class SearchService {
    * store via the kernel replay engine, then atomically swapping the alias
    * pointer (KMOS-0208 §3). The log is never mutated. Returns the rebuilt index.
    */
-  rebuild(): SearchIndex {
+  async rebuild(): Promise<SearchIndex> {
     const shadow = new InMemoryIndexStore();
     const projection: Projection<IndexStore> = {
       name: 'SearchIndex',
@@ -261,12 +264,12 @@ export class SearchService {
         return state;
       },
     };
-    const result = replay(this.bus.eventLog, projection, { now: this.now });
+    const result = await replay(this.bus.eventLog, projection, { now: this.now });
     // Atomic alias swap: readers see either the old or the new store, never a
     // half-built one (single-threaded reference assignment).
     this.store = result.state;
     this.indexObject = this.newIndexObject(this.store.size(), result.session.toSequence);
-    void this.emit('IndexRebuilt', this.indexObject.id, {
+    await this.emit('IndexRebuilt', this.indexObject.id, {
       indexName: this.indexName,
       index: this.indexObject.id,
       documentCount: this.store.size(),

@@ -27,8 +27,8 @@ const summarizerWorker = async (input: Record<string, unknown>) => ({
   confidence: 0.82,
 });
 
-function types(bus: EventBus): Set<string> {
-  return new Set(bus.eventLog.read().map((s: StoredEvent) => s.event.identity.type));
+async function types(bus: EventBus): Promise<Set<string>> {
+  return new Set((await bus.eventLog.read()).map((s: StoredEvent) => s.event.identity.type));
 }
 
 test('registering an AI worker creates a canonical AiWorker identity AND a capability', async () => {
@@ -51,7 +51,7 @@ test('registering an AI worker creates a canonical AiWorker identity AND a capab
   assert.ok(reg.capabilityId.startsWith('kmos:Capability:'));
 
   // Identity + capability facts landed on the shared bus.
-  const t = types(bus);
+  const t = await types(bus);
   assert.ok(t.has('IdentityCreated'));
   assert.ok(t.has('CapabilityRegistered'));
   assert.ok(t.has('CapabilityRuntimeRegistered')); // runtime implementation registered
@@ -78,7 +78,7 @@ test('invoking the worker runs it via the runtime and records a Pending, non-aut
   assert.equal(contribution.owner, 'GovernanceService');
 
   // The runtime actually executed the capability, and the contribution was emitted.
-  const t = types(bus);
+  const t = await types(bus);
   assert.ok(t.has('CapabilityExecutionCompleted'));
   assert.ok(t.has('AiContributionRecorded'));
 });
@@ -112,7 +112,7 @@ test('a contribution is NOT authoritative until a human review approves it; appr
   assert.equal(decisions[0]?.body.authority, 'editor@kmos');
 
   // ApprovalGranted landed on the shared bus.
-  assert.ok(types(bus).has('ApprovalGranted'));
+  assert.ok((await types(bus)).has('ApprovalGranted'));
 });
 
 test('human rejection marks the contribution Rejected and keeps it non-authoritative; governance records the rejection', async () => {
@@ -132,7 +132,7 @@ test('human rejection marks the contribution Rejected and keeps it non-authorita
   const decisions = governance.getDecisions(contribution.id);
   assert.equal(decisions.length, 1);
   assert.equal(decisions[0]?.body.outcome, 'Rejected');
-  assert.ok(types(bus).has('ApprovalRejected'));
+  assert.ok((await types(bus)).has('ApprovalRejected'));
 });
 
 test('the AI worker has a canonical identity and never operates anonymously: contributions are attributed to it', async () => {

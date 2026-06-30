@@ -80,7 +80,7 @@ async function main(): Promise<void> {
   log(`transcript ancestors: ${lineage.ancestors.length} (reaches source audio: ${lineage.ancestors.includes(lecture.audioAssetId)})`);
 
   h('8. Trust assessment (Governance — explainable)');
-  const trust = governance.assessTrust({ subjectId: lang.conceptIds[0]!, evidence: { knowledgeProvenance: true, assetIntegrity: true, reviewerApproval: true, identityVerification: true, policyCompliance: true } });
+  const trust = await governance.assessTrust({ subjectId: lang.conceptIds[0]!, evidence: { knowledgeProvenance: true, assetIntegrity: true, reviewerApproval: true, identityVerification: true, policyCompliance: true } });
   log(`trusted=${trust.trusted} score=${trust.score.toFixed(2)}\nreasons: ${trust.reasons.join('; ')}`);
 
   h('9. Institutional audit + replay (Event Service)');

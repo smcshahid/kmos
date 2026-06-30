@@ -60,7 +60,7 @@ test('throughput smoke: publish and replay N=5000 events with correct counts, or
   }
   const publishMs = performance.now() - publishStart;
 
-  assert.equal(bus.eventLog.size(), N, 'every published event landed in the log');
+  assert.equal(await bus.eventLog.size(), N, 'every published event landed in the log');
   assert.equal(bus.getDeadLetters().length, 0, 'no dead letters during publish');
 
   // --- Replay the entire immutable log into a counting projection. ---
@@ -77,7 +77,7 @@ test('throughput smoke: publish and replay N=5000 events with correct counts, or
   };
 
   const replayStart = performance.now();
-  const { state, session } = replay(bus.eventLog, counter, { now: fixedNow });
+  const { state, session } = await replay(bus.eventLog, counter, { now: fixedNow });
   const replayMs = performance.now() - replayStart;
 
   // --- Correctness: counts. ---

@@ -17,12 +17,12 @@ function wire() {
   return { bus, knowledge, search, studio };
 }
 
-test('Knowledge Studio: search finds concepts, shows detail, navigates relationships (thin facade)', () => {
+test('Knowledge Studio: search finds concepts, shows detail, navigates relationships (thin facade)', async () => {
   const { knowledge, studio } = wire();
-  const sincerity = knowledge.createKnowledge({ category: 'Concept', canonicalName: 'Sincerity', definition: 'Purity of intention', primaryLanguage: 'en' });
-  const purification = knowledge.createKnowledge({ category: 'Concept', canonicalName: 'Purification', definition: 'Cleansing', primaryLanguage: 'en' });
-  knowledge.addVocabulary(sincerity.id, { language: 'ar', preferredTerm: 'Ikhlas' });
-  const rel = knowledge.createRelationship({ relation: 'Explains', sourceId: sincerity.id, targetId: purification.id });
+  const sincerity = await knowledge.createKnowledge({ category: 'Concept', canonicalName: 'Sincerity', definition: 'Purity of intention', primaryLanguage: 'en' });
+  const purification = await knowledge.createKnowledge({ category: 'Concept', canonicalName: 'Purification', definition: 'Cleansing', primaryLanguage: 'en' });
+  await knowledge.addVocabulary(sincerity.id, { language: 'ar', preferredTerm: 'Ikhlas' });
+  const rel = await knowledge.createRelationship({ relation: 'Explains', sourceId: sincerity.id, targetId: purification.id });
 
   // search is event-driven: ConceptCreated events were indexed on the shared bus
   const hits = studio.find('Sincerity');
