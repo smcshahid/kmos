@@ -1,0 +1,26 @@
+{
+  "name": "@kmos/ai-collaboration",
+  "version": "1.0.0-rc.1",
+  "private": true,
+  "type": "module",
+  "description": "KMOS AI Collaboration domain service (KMOS-0008): registers AI workers as canonical (never anonymous) identities + capabilities, invokes them via the Capability Runtime, records every AI output as a non-authoritative AiContribution (a RECOMMENDATION), and routes human review/approval through the Governance Service. AI is a collaborator, never the system of record; humans govern.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@kmos/canonical-kernel": "*",
+    "@kmos/identity": "*",
+    "@kmos/governance": "*",
+    "@kmos/capability-registry": "*",
+    "@kmos/capability-runtime": "*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --experimental-strip-types --import ../../tools/dev/register.mjs --test test/*.test.ts"
+  }
+}
