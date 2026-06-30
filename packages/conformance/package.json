@@ -1,0 +1,12 @@
+{
+  "name": "@kmos/conformance",
+  "version": "1.0.0-rc.1",
+  "private": true,
+  "type": "module",
+  "description": "KMOS Conformance Kit — defines and verifies what it means to be KMOS-compliant. Framework-agnostic contract suites for every replaceable port (EventLog, Authorizer, CapabilityHandler) plus canonical-object/event conformance, with a programmatic runner and CLI. Depends only on the canonical kernel so any implementation/adapter/SDK/third party can self-certify.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "dependencies": { "@kmos/canonical-kernel": "*" },
+  "scripts": { "build": "tsc --build", "test": "node --experimental-strip-types --import ../../tools/dev/register.mjs --test test/*.test.ts" }
+}
