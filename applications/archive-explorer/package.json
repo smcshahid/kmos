@@ -1,0 +1,23 @@
+{
+  "name": "@kmos/archive-explorer",
+  "version": "1.0.0-rc.1",
+  "private": true,
+  "type": "module",
+  "description": "Archive Explorer (WP-20 / KMOS-0009): a THIN application that explores the institutional archive by composing the Asset Registry service. Contains no business logic and no canonical objects.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@kmos/canonical-kernel": "*",
+    "@kmos/assets": "*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --experimental-strip-types --import ../../tools/dev/register.mjs --test test/*.test.ts"
+  }
+}
