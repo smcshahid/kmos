@@ -1,0 +1,31 @@
+# KMOS local stack. `docker compose up` brings up Postgres (for the database
+# tests / future persistence) and runs the KMOS reference demo to prove the
+# platform works end-to-end. A long-running API server is a post-KEP-001
+# deliverable; see documentation/DEPLOYMENT-GUIDE.md.
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: kmos
+      POSTGRES_PASSWORD: kmos
+      POSTGRES_DB: kmos
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kmos -d kmos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - kmos-pgdata:/var/lib/postgresql/data
+
+  kmos:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KMOS_DATABASE_URL: postgres://kmos:kmos@postgres:5432/kmos
+    command: ["npm", "run", "demo"]
+
+volumes:
+  kmos-pgdata:

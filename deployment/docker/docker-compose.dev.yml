@@ -1,0 +1,24 @@
+# KMOS local development environment.
+# PostgreSQL is the single polyglot backbone for the modular-monolith-first phase
+# (event log + outbox + relational + JSONB + pgvector + graph). Specialized stores
+# are introduced later behind repository ports (see DECISIONS.md D-B).
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: kmos-postgres
+    environment:
+      POSTGRES_USER: kmos
+      POSTGRES_PASSWORD: kmos
+      POSTGRES_DB: kmos
+    ports:
+      - "5432:5432"
+    volumes:
+      - kmos-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kmos -d kmos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  kmos-pgdata:
