@@ -1,0 +1,27 @@
+{
+  "name": "@kmos/platform-catalog",
+  "version": "1.0.0-rc.1",
+  "private": true,
+  "type": "module",
+  "description": "Composition utility: a single merged canonical Event Catalog covering all platform services + domain events, for deployments that run services on ONE shared event bus. Folds the per-service local catalogs into one (KNOWN_ISSUES M1-02; to be promoted into the kernel in M5).",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@kmos/canonical-kernel": "*",
+    "@kmos/governance": "*",
+    "@kmos/capability-runtime": "*",
+    "@kmos/workflow": "*",
+    "@kmos/configuration": "*",
+    "@kmos/search": "*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --experimental-strip-types --import ../../tools/dev/register.mjs --test test/*.test.ts"
+  }
+}
