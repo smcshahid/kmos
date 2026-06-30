@@ -1,0 +1,27 @@
+{
+  "name": "@kmos/media",
+  "version": "1.0.0-rc.1",
+  "private": true,
+  "type": "module",
+  "description": "KMOS Media domain service: composes capabilities (transcription, rendering) via the Workflow + Runtime to process media into evidence + knowledge inputs. Holds no business logic of its own (it lives in capabilities).",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@kmos/canonical-kernel": "*",
+    "@kmos/assets": "*",
+    "@kmos/capability-registry": "*",
+    "@kmos/capability-runtime": "*",
+    "@kmos/workflow": "*",
+    "@kmos/reference-capabilities": "*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --experimental-strip-types --import ../../tools/dev/register.mjs --test test/*.test.ts"
+  }
+}
