@@ -1,0 +1,72 @@
+name: KMOS CI
+
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  static:
+    name: Static checks (lint, fitness, typecheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Architecture fitness
+        run: npm run fitness
+      - name: TypeScript verification
+        run: npm run typecheck
+
+  tests:
+    name: Tests (unit, contract, security, integration, perf, certification)
+    runs-on: ubuntu-latest
+    needs: static
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Contract tests
+        run: npm run test:contract
+      - name: Security tests
+        run: npm run test:security
+      - name: Integration tests (incl. concurrency + resilience)
+        run: npm run test:integration
+      - name: Performance smoke
+        run: npm run test:perf
+      - name: Certification suite
+        run: npm run test:certification
+      - name: KMOS Conformance Kit (all profiles)
+        run: npm run conformance
+      - name: Reference demo (end-to-end smoke)
+        run: npm run demo
+
+  database:
+    name: Database tests (real PostgreSQL — validates CRIT-1 async EventLog)
+    runs-on: ubuntu-latest
+    needs: static
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env: { POSTGRES_USER: kmos, POSTGRES_PASSWORD: kmos, POSTGRES_DB: kmos }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U kmos -d kmos" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      KMOS_DATABASE_URL: postgres://kmos:kmos@localhost:5432/kmos
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      # Runs the EventLog contract + persistence/replay integration against a REAL
+      # database once the async-kernel migration (KEP-001) lands. Until then this
+      # job exercises the contract against the in-memory + fake-SQL adapters.
+      - name: EventLog contract + persistence
+        run: npm run test:contract
