@@ -1,0 +1,29 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "KMOS HTTP API",
+    "version": "1.0.0",
+    "description": "Canonical business operations over REST (KMOS-0180), served by @kmos/api-server (node:http, zero runtime deps). Resources are canonical objects; identifiers are stable kmos:<Type>:<uuid>. Headers x-kmos-actor / x-kmos-organization carry attribution context."
+  },
+  "servers": [{ "url": "http://localhost:8080" }],
+  "paths": {
+    "/health": { "get": { "summary": "Platform health", "responses": { "200": { "description": "ok" } } } },
+    "/": { "get": { "summary": "Reference web UI (HTML)", "responses": { "200": { "description": "HTML console" } } } },
+    "/organizations": { "post": { "summary": "Create organization", "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" } }, "required": ["name"] } } } }, "responses": { "200": { "description": "Organization (canonical object)" } } } },
+    "/identities": { "post": { "summary": "Create identity (human or non-human)", "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "kind": { "type": "string" }, "displayName": { "type": "string" }, "organizationId": { "type": "string" } }, "required": ["displayName"] } } } }, "responses": { "200": { "description": "Identity" } } } },
+    "/knowledge": {
+      "get": { "summary": "Search knowledge", "parameters": [{ "name": "q", "in": "query", "schema": { "type": "string" } }], "responses": { "200": { "description": "Search hits" } } },
+      "post": { "summary": "Create a Knowledge Object", "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "category": { "type": "string" }, "canonicalName": { "type": "string" }, "definition": { "type": "string" }, "primaryLanguage": { "type": "string" }, "organizationId": { "type": "string" } }, "required": ["canonicalName"] } } } }, "responses": { "200": { "description": "KnowledgeObject" } } }
+    },
+    "/knowledge/{id}": { "get": { "summary": "Knowledge detail (object + vocabulary + history)", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "ConceptDetail" }, "404": { "description": "Not found" } } } },
+    "/lectures": { "post": { "summary": "Import + transcribe a lecture (Media domain)", "responses": { "200": { "description": "PreserveLectureResult" } } } },
+    "/transcripts": { "post": { "summary": "Process a transcript into knowledge (Language domain)", "responses": { "200": { "description": "ProcessTranscriptResult" } } } },
+    "/assets/{id}": { "get": { "summary": "Asset view", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "AssetView" } } } },
+    "/assets/{id}/lineage": { "get": { "summary": "Asset lineage / chain of custody", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "LineageView" } } } },
+    "/publications": { "post": { "summary": "Publish with governance approval (Publishing domain)", "responses": { "200": { "description": "PublishResult" } } } },
+    "/preservations": { "post": { "summary": "Preserve assets (integrity + evidence)", "responses": { "200": { "description": "PreserveResult" } } } },
+    "/governance/trust/{subjectId}": { "get": { "summary": "Explainable trust assessment", "parameters": [{ "name": "subjectId", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "TrustResult" } } } },
+    "/events/metrics": { "get": { "summary": "Institutional event metrics", "responses": { "200": { "description": "EventMetrics" } } } },
+    "/events/correlation/{id}": { "get": { "summary": "Correlation chain for a transaction", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Ordered events" } } } }
+  }
+}

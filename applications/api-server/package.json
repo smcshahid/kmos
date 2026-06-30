@@ -1,0 +1,37 @@
+{
+  "name": "@kmos/api-server",
+  "version": "1.0.0-rc.1",
+  "private": true,
+  "type": "module",
+  "description": "KMOS HTTP API server (node:http, zero runtime deps): exposes canonical business operations over REST and serves the reference web UI. Composes the platform on one shared canonical event bus.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@kmos/canonical-kernel": "*",
+    "@kmos/identity": "*",
+    "@kmos/assets": "*",
+    "@kmos/knowledge": "*",
+    "@kmos/governance": "*",
+    "@kmos/events": "*",
+    "@kmos/capability-registry": "*",
+    "@kmos/capability-runtime": "*",
+    "@kmos/search": "*",
+    "@kmos/platform-catalog": "*",
+    "@kmos/media": "*",
+    "@kmos/language": "*",
+    "@kmos/publishing": "*",
+    "@kmos/preservation": "*",
+    "@kmos/knowledge-studio": "*",
+    "@kmos/archive-explorer": "*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --experimental-strip-types --import ../../tools/dev/register.mjs --test test/*.test.ts"
+  }
+}
