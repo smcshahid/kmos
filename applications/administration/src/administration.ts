@@ -98,11 +98,11 @@ export class Administration {
    * Request an approval through the Governance Service and remember its id so it
    * can be surfaced by `pendingApprovals`. Delegates entirely to Governance.
    */
-  requestApproval(
+  async requestApproval(
     subjectId: CanonicalId,
     reviewers: readonly string[],
-  ): Approval {
-    const approval = this.governance.requestApproval({
+  ): Promise<Approval> {
+    const approval = await this.governance.requestApproval({
       subjectId,
       reviewers,
       mode: 'Single',
@@ -134,7 +134,7 @@ export class Administration {
     reviewer: string,
     verdict: ReviewerVerdict,
     reason: string,
-  ): Approval {
+  ): Promise<Approval> {
     return verdict === 'Granted'
       ? this.governance.grantApproval(approvalId, reviewer, reason)
       : this.governance.rejectApproval(approvalId, reviewer, reason);

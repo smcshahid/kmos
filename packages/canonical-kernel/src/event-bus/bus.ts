@@ -127,7 +127,7 @@ export class EventBus {
     this.validateEvent(event);
     this.enforce(event);
     const streamId = options.streamId ?? event.identity.subjectId ?? event.identity.eventId;
-    const stored = this.log.append(streamId, event, options.expectedVersion === undefined ? undefined : { expectedVersion: options.expectedVersion });
+    const stored = await this.log.append(streamId, event, options.expectedVersion === undefined ? undefined : { expectedVersion: options.expectedVersion });
     await this.dispatch(stored);
     return stored;
   }

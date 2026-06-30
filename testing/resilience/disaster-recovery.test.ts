@@ -40,32 +40,32 @@ test('disaster recovery: knowledge graph is fully reconstructable by replaying t
   const bus = new EventBus({ catalog: createPlatformCatalog() });
   const knowledge = new KnowledgeService({ bus, now: fixedNow });
 
-  const sincerity = knowledge.createKnowledge({
+  const sincerity = await knowledge.createKnowledge({
     category: 'Concept',
     canonicalName: 'Sincerity',
     definition: 'Purity of intention.',
     primaryLanguage: 'en',
     confidence: 0.9,
   });
-  const purification = knowledge.createKnowledge({
+  const purification = await knowledge.createKnowledge({
     category: 'Concept',
     canonicalName: 'Purification',
     definition: 'Cleansing of the heart.',
     primaryLanguage: 'en',
   });
-  const patience = knowledge.createKnowledge({
+  const patience = await knowledge.createKnowledge({
     category: 'Concept',
     canonicalName: 'Patience',
     definition: 'Steadfastness under trial.',
     primaryLanguage: 'en',
   });
-  knowledge.createRelationship({
+  await knowledge.createRelationship({
     relation: 'Explains',
     sourceId: sincerity.id,
     targetId: purification.id,
     confidence: 0.8,
   });
-  knowledge.createRelationship({
+  await knowledge.createRelationship({
     relation: 'RelatedTo',
     sourceId: patience.id,
     targetId: sincerity.id,
@@ -79,10 +79,9 @@ test('disaster recovery: knowledge graph is fully reconstructable by replaying t
 
   // Snapshot the immutable history as it stands right after business activity.
   const log = bus.eventLog;
-  const historyBefore = log
-    .read(1)
+  const historyBefore = (await log.read(1))
     .map((s: StoredEvent) => `${s.sequence}|${s.streamId}|${s.event.identity.eventId}|${s.event.identity.type}`);
-  const sizeBefore = log.size();
+  const sizeBefore = await log.size();
   assert.ok(sizeBefore >= 5, 'at least five canonical events were appended');
 
   // --- TOTAL service-state loss. ---
@@ -91,7 +90,7 @@ test('disaster recovery: knowledge graph is fully reconstructable by replaying t
   // do NOT reuse `knowledge` below; recovery must not depend on live state.)
 
   // --- Recovery path 1: rebuild from a BRAND-NEW projection via kernel replay.
-  const { state, session } = replay(log, graphProjection, { now: fixedNow });
+  const { state, session } = await replay(log, graphProjection, { now: fixedNow });
   const rebuiltGraph = graphFromState(state);
   const rebuilt = fingerprint(rebuiltGraph);
 
@@ -101,15 +100,14 @@ test('disaster recovery: knowledge graph is fully reconstructable by replaying t
 
   // --- Recovery path 2: the service-level fold yields the same graph. ---
   const recoveredService = new KnowledgeService({ bus, now: fixedNow });
-  const fromEvents = fingerprint(recoveredService.buildGraphFromEvents());
+  const fromEvents = fingerprint(await recoveredService.buildGraphFromEvents());
   assert.deepEqual(fromEvents.nodes, preLoss.nodes, 'service event-fold matches pre-loss nodes');
   assert.deepEqual(fromEvents.edges, preLoss.edges, 'service event-fold matches pre-loss edges');
 
   // --- The log was never mutated by recovery (append-only / immutable). ---
-  const historyAfter = log
-    .read(1)
+  const historyAfter = (await log.read(1))
     .map((s: StoredEvent) => `${s.sequence}|${s.streamId}|${s.event.identity.eventId}|${s.event.identity.type}`);
-  assert.equal(log.size(), sizeBefore, 'recovery appended nothing to the log');
+  assert.equal(await log.size(), sizeBefore, 'recovery appended nothing to the log');
   assert.deepEqual(historyAfter, historyBefore, 'event history is byte-for-byte unchanged after recovery');
 
   assert.equal(bus.getDeadLetters().length, 0, 'no dead letters during the journey');

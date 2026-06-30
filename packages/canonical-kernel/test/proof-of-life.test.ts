@@ -65,9 +65,9 @@ test('proof of life: publish -> validate -> persist -> consume idempotently -> r
   await bus.publish(knowledge, { streamId: assetId });
 
   // Append-only log
-  assert.equal(bus.eventLog.size(), 3);
-  assert.equal(bus.eventLog.currentVersion(assetId), 3);
-  const stream = bus.eventLog.readStream(assetId);
+  assert.equal(await bus.eventLog.size(), 3);
+  assert.equal(await bus.eventLog.currentVersion(assetId), 3);
+  const stream = await bus.eventLog.readStream(assetId);
   assert.deepEqual(stream.map((s) => s.streamVersion), [1, 2, 3]);
   assert.deepEqual(stream.map((s) => s.sequence), [1, 2, 3]);
 
@@ -95,20 +95,20 @@ test('proof of life: publish -> validate -> persist -> consume idempotently -> r
       return { ...state, [t]: (state[t] ?? 0) + 1 };
     },
   };
-  const { state, session } = replay(bus.eventLog, countByType, { now: () => '2026-06-30T00:00:00.000Z' });
+  const { state, session } = await replay(bus.eventLog, countByType, { now: () => '2026-06-30T00:00:00.000Z' });
   assert.deepEqual(state, { AssetRegistered: 1, TranscriptGenerated: 1, KnowledgeUpdated: 1 });
   assert.equal(session.eventsApplied, 3);
   assert.equal(session.fromSequence, 1);
   assert.equal(session.toSequence, 3);
   assert.equal(session.projection, 'count-by-type');
-  assert.equal(bus.eventLog.size(), 3); // unchanged by replay
+  assert.equal(await bus.eventLog.size(), 3); // unchanged by replay
 });
 
 test('rejects an unregistered canonical event type before it enters history', async () => {
   const bus = new EventBus();
   const bogus = createEvent({ type: 'SomethingNeverRegistered', schemaVersion: '1.0', producer: 'test', payload: {} });
   await assert.rejects(() => bus.publish(bogus), /unregistered/i);
-  assert.equal(bus.eventLog.size(), 0);
+  assert.equal(await bus.eventLog.size(), 0);
 });
 
 test('enforces optimistic concurrency on a stream', async () => {

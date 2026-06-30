@@ -155,9 +155,9 @@ test('rebuild() reconstructs the same index from the event log via replay, witho
 
   const beforeCount = svc.documentCount();
   const beforeHit = svc.search('gamma');
-  const logSizeBefore = bus.eventLog.size();
+  const logSizeBefore = await bus.eventLog.size();
 
-  const rebuilt = svc.rebuild();
+  const rebuilt = await svc.rebuild();
 
   // Index reconstructed identically.
   assert.equal(svc.documentCount(), beforeCount);
@@ -170,9 +170,9 @@ test('rebuild() reconstructs the same index from the event log via replay, witho
 
   // History is immutable: the log only GREW (by the IndexRebuilt event), and the
   // original canonical events are still present and unchanged.
-  assert.ok(bus.eventLog.size() >= logSizeBefore, 'log is append-only (never shrinks)');
+  assert.ok((await bus.eventLog.size()) >= logSizeBefore, 'log is append-only (never shrinks)');
   for (const ev of events) {
-    const stream = bus.eventLog.readStream(ev.identity.subjectId!);
+    const stream = await bus.eventLog.readStream(ev.identity.subjectId!);
     assert.ok(stream.some((s) => s.event.identity.eventId === ev.identity.eventId), 'original event intact');
   }
 });

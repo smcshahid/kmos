@@ -61,23 +61,23 @@ test('lecture flow: identity -> assets+lineage -> knowledge -> governance -> app
   assert.ok(ancestorIds.has(audio.id) && ancestorIds.has(video.id), 'transcript lineage reaches the source video');
 
   // 3) Knowledge: a concept evidenced by the transcript, with vocabulary and a relationship.
-  const sincerity = knowledge.createKnowledge({
+  const sincerity = await knowledge.createKnowledge({
     category: 'Concept', canonicalName: 'Sincerity', definition: 'Purity of intention.',
     primaryLanguage: 'en', organizationId: org.id, evidenceRefs: [transcript.id], confidence: 0.9,
   });
-  knowledge.addVocabulary(sincerity.id, { language: 'ar', preferredTerm: 'Ikhlas', transliteration: 'ikhlāṣ' });
-  const purification = knowledge.createKnowledge({
+  await knowledge.addVocabulary(sincerity.id, { language: 'ar', preferredTerm: 'Ikhlas', transliteration: 'ikhlāṣ' });
+  const purification = await knowledge.createKnowledge({
     category: 'Concept', canonicalName: 'Purification', definition: 'Cleansing of the heart.',
     primaryLanguage: 'en', organizationId: org.id, evidenceRefs: [transcript.id],
   });
-  const rel = knowledge.createRelationship({ relation: 'Explains', sourceId: sincerity.id, targetId: purification.id, confidence: 0.8 });
+  const rel = await knowledge.createRelationship({ relation: 'Explains', sourceId: sincerity.id, targetId: purification.id, confidence: 0.8 });
   assert.equal(rel.type, 'Relationship');
   assert.equal(rel.body.sourceId, sincerity.id);
 
   // 4) Governance: approval + evidence-based trust assessment.
-  const approval = governance.requestApproval({ subjectId: sincerity.id, reviewers: ['Editor'], mode: 'Single' });
-  governance.grantApproval(approval.id, 'Editor', 'Reviewed against the transcript evidence.');
-  const trust = governance.assessTrust({
+  const approval = await governance.requestApproval({ subjectId: sincerity.id, reviewers: ['Editor'], mode: 'Single' });
+  await governance.grantApproval(approval.id, 'Editor', 'Reviewed against the transcript evidence.');
+  const trust = await governance.assessTrust({
     subjectId: sincerity.id,
     evidence: { knowledgeProvenance: true, assetIntegrity: true, reviewerApproval: true, identityVerification: true, policyCompliance: true },
   });
@@ -85,11 +85,11 @@ test('lecture flow: identity -> assets+lineage -> knowledge -> governance -> app
   assert.ok(trust.reasons.length > 0, 'trust decision is explainable');
 
   // 5) Knowledge: approve the now-trusted concept.
-  const approved = knowledge.approve(sincerity.id);
+  const approved = await knowledge.approve(sincerity.id);
   assert.equal(approved.lifecycle, 'Approved');
 
   // --- Shared institutional history accumulated from ALL engines ---
-  const log = bus.eventLog.read(1);
+  const log = await bus.eventLog.read(1);
   const types = new Set(log.map((s) => s.event.identity.type));
   for (const expected of ['IdentityCreated', 'AssetRegistered', 'ConceptCreated', 'RelationshipEstablished', 'ApprovalGranted', 'TrustAssessmentCompleted', 'KnowledgeApproved']) {
     assert.ok(types.has(expected), `shared log should contain ${expected}`);

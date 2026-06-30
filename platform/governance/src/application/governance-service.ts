@@ -119,7 +119,7 @@ export class GovernanceService {
 
   // --- Policy registry (KMOS-0207) ---------------------------------------
 
-  registerPolicy(input: RegisterPolicyInput): { policy: Policy; version: PolicyVersion } {
+  async registerPolicy(input: RegisterPolicyInput): Promise<{ policy: Policy; version: PolicyVersion }> {
     const at = this.now();
     const policyId = newCanonicalId('Policy');
     const version = this.buildPolicyVersion(policyId, 1, input.rules, input.authoredBy, at);
@@ -140,16 +140,16 @@ export class GovernanceService {
     });
     this.repos.policies.putVersion(version);
     this.repos.policies.putPolicy(policy);
-    void this.emit('PolicyRegistered', policyId, { policyId, name: input.name, version: 1 });
+    await this.emit('PolicyRegistered', policyId, { policyId, name: input.name, version: 1 });
     return { policy, version };
   }
 
   /** Append a new IMMUTABLE policy version; prior versions are never mutated. */
-  registerPolicyVersion(
+  async registerPolicyVersion(
     policyId: CanonicalId,
     rules: readonly PolicyRule[],
     authoredBy: string,
-  ): PolicyVersion {
+  ): Promise<PolicyVersion> {
     const existing = this.repos.policies.getPolicy(policyId);
     if (!existing) {
       throw new KmosError(`No such policy: ${policyId}`, {
@@ -174,7 +174,7 @@ export class GovernanceService {
       },
     };
     this.repos.policies.putPolicy(updated);
-    void this.emit('PolicyVersionRegistered', policyId, { policyId, version: nextVersion });
+    await this.emit('PolicyVersionRegistered', policyId, { policyId, version: nextVersion });
     return version;
   }
 
@@ -187,7 +187,7 @@ export class GovernanceService {
   }
 
   /** Deterministically evaluate a policy's current version against an input. */
-  evaluatePolicy(policyId: CanonicalId, input: Readonly<Record<string, unknown>>): PolicyEvaluation {
+  async evaluatePolicy(policyId: CanonicalId, input: Readonly<Record<string, unknown>>): Promise<PolicyEvaluation> {
     const policy = this.requirePolicy(policyId);
     const versions = this.repos.policies.listVersions(policyId);
     const current = versions.find((v) => v.body.version === policy.body.currentVersion);
@@ -200,7 +200,7 @@ export class GovernanceService {
     }
     const { satisfied, reasons } = evaluateRules(current.body.rules, input);
     const at = this.now();
-    void this.emit('PolicyEvaluated', policyId, {
+    await this.emit('PolicyEvaluated', policyId, {
       policyId,
       version: current.body.version,
       satisfied,
@@ -229,7 +229,7 @@ export class GovernanceService {
 
   // --- Approvals (KMOS-0207) ---------------------------------------------
 
-  requestApproval(input: RequestApprovalInput): Approval {
+  async requestApproval(input: RequestApprovalInput): Promise<Approval> {
     if (input.reviewers.length === 0) {
       throw new KmosError('An approval requires at least one reviewer', {
         category: 'Validation',
@@ -258,7 +258,7 @@ export class GovernanceService {
       now: at,
     });
     this.repos.approvals.put(approval);
-    void this.emit('ApprovalRequested', input.subjectId, {
+    await this.emit('ApprovalRequested', input.subjectId, {
       approvalId: approval.id,
       subjectId: input.subjectId,
       mode: input.mode,
@@ -268,20 +268,20 @@ export class GovernanceService {
     return approval;
   }
 
-  grantApproval(approvalId: CanonicalId, reviewer: string, reason: string): Approval {
+  grantApproval(approvalId: CanonicalId, reviewer: string, reason: string): Promise<Approval> {
     return this.recordReviewerDecision(approvalId, reviewer, 'Granted', reason);
   }
 
-  rejectApproval(approvalId: CanonicalId, reviewer: string, reason: string): Approval {
+  rejectApproval(approvalId: CanonicalId, reviewer: string, reason: string): Promise<Approval> {
     return this.recordReviewerDecision(approvalId, reviewer, 'Rejected', reason);
   }
 
-  private recordReviewerDecision(
+  private async recordReviewerDecision(
     approvalId: CanonicalId,
     reviewer: string,
     verdict: ReviewerVerdict,
     reason: string,
-  ): Approval {
+  ): Promise<Approval> {
     const current = this.repos.approvals.get(approvalId);
     if (!current) {
       throw new KmosError(`No such approval: ${approvalId}`, {
@@ -348,7 +348,7 @@ export class GovernanceService {
         reason,
         current.body.policyVersion,
       );
-      void this.emit('ApprovalGranted', current.body.subjectId, {
+      await this.emit('ApprovalGranted', current.body.subjectId, {
         approvalId,
         subjectId: current.body.subjectId,
         reviewer,
@@ -363,7 +363,7 @@ export class GovernanceService {
         reason,
         current.body.policyVersion,
       );
-      void this.emit('ApprovalRejected', current.body.subjectId, {
+      await this.emit('ApprovalRejected', current.body.subjectId, {
         approvalId,
         subjectId: current.body.subjectId,
         reviewer,
@@ -379,7 +379,7 @@ export class GovernanceService {
 
   // --- Reviews (KMOS-0207) -----------------------------------------------
 
-  createReview(subjectId: CanonicalId, reviewer: string): Review {
+  async createReview(subjectId: CanonicalId, reviewer: string): Promise<Review> {
     const at = this.now();
     const review = createCanonicalObject<Review['body']>({
       id: newCanonicalId('Review'),
@@ -392,15 +392,15 @@ export class GovernanceService {
       now: at,
     });
     this.repos.reviews.put(review);
-    void this.emit('ReviewCreated', subjectId, { reviewId: review.id, subjectId, reviewer });
+    await this.emit('ReviewCreated', subjectId, { reviewId: review.id, subjectId, reviewer });
     return review;
   }
 
-  completeReview(
+  async completeReview(
     reviewId: CanonicalId,
     conclusion: ReviewConclusion,
     evidence: readonly string[],
-  ): Review {
+  ): Promise<Review> {
     const current = this.repos.reviews.get(reviewId);
     if (!current) {
       throw new KmosError(`No such review: ${reviewId}`, {
@@ -433,7 +433,7 @@ export class GovernanceService {
       `Conclusion ${conclusion}`,
       [],
     );
-    void this.emit('ReviewCompleted', current.body.subjectId, {
+    await this.emit('ReviewCompleted', current.body.subjectId, {
       reviewId,
       subjectId: current.body.subjectId,
       conclusion,
@@ -444,11 +444,11 @@ export class GovernanceService {
 
   // --- Certification (KMOS-0207) -----------------------------------------
 
-  grantCertification(
+  async grantCertification(
     subjectId: CanonicalId,
     level: CertificationLevel,
     authority: string,
-  ): Certification {
+  ): Promise<Certification> {
     const at = this.now();
     const cert = createCanonicalObject<Certification['body']>({
       id: newCanonicalId('Certification'),
@@ -462,7 +462,7 @@ export class GovernanceService {
     });
     this.repos.certifications.add(cert);
     this.recordDecision(subjectId, 'Certification', `Granted:${level}`, authority, `Certified ${level}`, undefined);
-    void this.emit('CertificationGranted', subjectId, {
+    await this.emit('CertificationGranted', subjectId, {
       certificationId: cert.id,
       subjectId,
       level,
@@ -471,7 +471,7 @@ export class GovernanceService {
     return cert;
   }
 
-  revokeCertification(certificationId: CanonicalId, authority: string, reason: string): Certification {
+  async revokeCertification(certificationId: CanonicalId, authority: string, reason: string): Promise<Certification> {
     const current = this.repos.certifications.get(certificationId);
     if (!current) {
       throw new KmosError(`No such certification: ${certificationId}`, {
@@ -505,7 +505,7 @@ export class GovernanceService {
       reason,
       undefined,
     );
-    void this.emit('CertificationRevoked', current.body.subjectId, {
+    await this.emit('CertificationRevoked', current.body.subjectId, {
       certificationId,
       subjectId: current.body.subjectId,
       level: current.body.level,
@@ -524,13 +524,13 @@ export class GovernanceService {
 
   // --- Compliance (KMOS-0207) --------------------------------------------
 
-  recordCompliance(
+  async recordCompliance(
     subjectId: CanonicalId,
     framework: string,
     result: ComplianceResult,
     verifiedBy: string,
     evidence: readonly string[] = [],
-  ): ComplianceRecord {
+  ): Promise<ComplianceRecord> {
     const at = this.now();
     const record = createCanonicalObject<ComplianceRecord['body']>({
       id: newCanonicalId('ComplianceRecord'),
@@ -544,7 +544,7 @@ export class GovernanceService {
     });
     this.repos.compliance.add(record);
     this.recordAudit(subjectId, 'ComplianceVerified', verifiedBy, result, `Framework ${framework}`, []);
-    void this.emit('ComplianceVerified', subjectId, {
+    await this.emit('ComplianceVerified', subjectId, {
       complianceRecordId: record.id,
       subjectId,
       framework,
@@ -559,7 +559,7 @@ export class GovernanceService {
 
   // --- Risk (KMOS-0207) --------------------------------------------------
 
-  assessRisk(input: AssessRiskInput): RiskAssessment {
+  async assessRisk(input: AssessRiskInput): Promise<RiskAssessment> {
     const at = this.now();
     const { inherentRisk, residualRisk } = computeRisk(input.level, input.impact, input.likelihood);
     const assessment = createCanonicalObject<RiskAssessment['body']>({
@@ -591,7 +591,7 @@ export class GovernanceService {
       `inherent=${inherentRisk}, residual=${residualRisk}`,
       [],
     );
-    void this.emit('RiskAssessed', input.subjectId, {
+    await this.emit('RiskAssessed', input.subjectId, {
       riskAssessmentId: assessment.id,
       subjectId: input.subjectId,
       level: input.level,
@@ -607,7 +607,7 @@ export class GovernanceService {
 
   // --- Exceptions (KMOS-0207) --------------------------------------------
 
-  createException(input: CreateExceptionInput): Exception {
+  async createException(input: CreateExceptionInput): Promise<Exception> {
     const at = this.now();
     const expiresAt =
       input.durationMs !== undefined
@@ -639,7 +639,7 @@ export class GovernanceService {
       input.reason,
       [],
     );
-    void this.emit('ExceptionCreated', exception.id, {
+    await this.emit('ExceptionCreated', exception.id, {
       exceptionId: exception.id,
       scope: input.scope,
       approver: input.approver,
@@ -648,7 +648,7 @@ export class GovernanceService {
     return exception;
   }
 
-  closeException(exceptionId: CanonicalId, closeReason: string): Exception {
+  async closeException(exceptionId: CanonicalId, closeReason: string): Promise<Exception> {
     const current = this.repos.exceptions.get(exceptionId);
     if (!current) {
       throw new KmosError(`No such exception: ${exceptionId}`, {
@@ -673,7 +673,7 @@ export class GovernanceService {
       body: { ...current.body, state: 'Closed', closedAt: at, closeReason },
     };
     this.repos.exceptions.put(updated);
-    void this.emit('ExceptionClosed', exceptionId, { exceptionId, closeReason });
+    await this.emit('ExceptionClosed', exceptionId, { exceptionId, closeReason });
     return updated;
   }
 
@@ -694,7 +694,7 @@ export class GovernanceService {
    * array makes the decision fully auditable — trust never relies on
    * undocumented judgment (KMOS-0207 acceptance criterion).
    */
-  assessTrust(args: { subjectId: CanonicalId; evidence: TrustEvidence; threshold?: number }): TrustResult {
+  async assessTrust(args: { subjectId: CanonicalId; evidence: TrustEvidence; threshold?: number }): Promise<TrustResult> {
     const result =
       args.threshold !== undefined ? deriveTrust(args.evidence, args.threshold) : deriveTrust(args.evidence);
     this.recordAudit(
@@ -705,7 +705,7 @@ export class GovernanceService {
       result.reasons.join('; '),
       [],
     );
-    void this.emit('TrustAssessmentCompleted', args.subjectId, {
+    await this.emit('TrustAssessmentCompleted', args.subjectId, {
       subjectId: args.subjectId,
       trusted: result.trusted,
       score: result.score,

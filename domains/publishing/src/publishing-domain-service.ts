@@ -130,8 +130,8 @@ export class PublishingDomainService {
 
     // 3) Request a governance approval for releasing this publication, then have
     //    the approver decide. Release is GATED on the approval outcome.
-    const approval = this.governance.requestApproval({ subjectId: publication.id, reviewers: [input.approver], mode: 'Single' });
-    const decided = this.governance.grantApproval(approval.id, input.approver, 'Publication approved for release');
+    const approval = await this.governance.requestApproval({ subjectId: publication.id, reviewers: [input.approver], mode: 'Single' });
+    const decided = await this.governance.grantApproval(approval.id, input.approver, 'Publication approved for release');
 
     if (decided.body.state !== 'Granted') {
       // Approval not granted: do NOT release.
@@ -174,8 +174,8 @@ export class PublishingDomainService {
     }
     await this.emit('PublicationMetadataGenerated', publication.id, { publicationAssetId: publication.id, slug: metadata.slug, tagCount: metadata.tags.length }, input.organizationId);
 
-    const approval = this.governance.requestApproval({ subjectId: publication.id, reviewers: [input.approver], mode: 'Single' });
-    const decided = this.governance.rejectApproval(approval.id, input.approver, 'Publication rejected');
+    const approval = await this.governance.requestApproval({ subjectId: publication.id, reviewers: [input.approver], mode: 'Single' });
+    const decided = await this.governance.rejectApproval(approval.id, input.approver, 'Publication rejected');
 
     // Rejected: gate prevents release. No PublicationReleased / PublicationPrepared.
     return { publicationAssetId: publication.id, metadata, approvalId: approval.id, released: decided.body.state === 'Granted', workflowExecutionId: exec.id, state: exec.body.state };

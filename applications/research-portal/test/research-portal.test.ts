@@ -34,7 +34,7 @@ async function wire() {
 
 test('Research Portal: semanticSearch finds a concept (thin delegate to Search)', async () => {
   const { knowledge, portal, evidence } = await wire();
-  const sincerity = knowledge.createKnowledge({
+  const sincerity = await knowledge.createKnowledge({
     category: 'Concept',
     canonicalName: 'Sincerity',
     definition: 'Purity of intention',
@@ -48,7 +48,7 @@ test('Research Portal: semanticSearch finds a concept (thin delegate to Search)'
 
 test('Research Portal: answerQuestion assembles concept + its citation Asset', async () => {
   const { knowledge, portal, evidence } = await wire();
-  const sincerity = knowledge.createKnowledge({
+  const sincerity = await knowledge.createKnowledge({
     category: 'Concept',
     canonicalName: 'Sincerity',
     definition: 'Purity of intention',
@@ -69,7 +69,7 @@ test('Research Portal: answerQuestion assembles concept + its citation Asset', a
 
 test('Research Portal: findCitations resolves evidence refs to Assets', async () => {
   const { knowledge, portal, evidence } = await wire();
-  const sincerity = knowledge.createKnowledge({
+  const sincerity = await knowledge.createKnowledge({
     category: 'Concept',
     canonicalName: 'Sincerity',
     definition: 'Purity of intention',
@@ -82,7 +82,7 @@ test('Research Portal: findCitations resolves evidence refs to Assets', async ()
   assert.equal(citations[0]!.id, evidence.id);
 
   // A concept with no evidence yields no citations (nothing invented).
-  const purification = knowledge.createKnowledge({
+  const purification = await knowledge.createKnowledge({
     category: 'Concept',
     canonicalName: 'Purification',
     definition: 'Cleansing',
@@ -93,20 +93,20 @@ test('Research Portal: findCitations resolves evidence refs to Assets', async ()
 
 test('Research Portal: relatedConcepts returns a linked concept via the graph', async () => {
   const { knowledge, portal, evidence } = await wire();
-  const sincerity = knowledge.createKnowledge({
+  const sincerity = await knowledge.createKnowledge({
     category: 'Concept',
     canonicalName: 'Sincerity',
     definition: 'Purity of intention',
     primaryLanguage: 'en',
     evidenceRefs: [evidence.id],
   });
-  const purification = knowledge.createKnowledge({
+  const purification = await knowledge.createKnowledge({
     category: 'Concept',
     canonicalName: 'Purification',
     definition: 'Cleansing',
     primaryLanguage: 'en',
   });
-  knowledge.createRelationship({ relation: 'Explains', sourceId: sincerity.id, targetId: purification.id });
+  await knowledge.createRelationship({ relation: 'Explains', sourceId: sincerity.id, targetId: purification.id });
 
   const neighbours = portal.relatedConcepts(sincerity.id);
   assert.equal(neighbours.length, 1);

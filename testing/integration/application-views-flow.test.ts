@@ -41,7 +41,7 @@ test('apps as interchangeable views: Public API writes -> Studio reads -> Explor
     storageRef: { storageId: 's-1', backend: 'object' }, checksum: sha256(content), content: new TextEncoder().encode(content),
     provenance: { origin: 'Ingested' },
   });
-  const concept = api.createKnowledge({ category: 'Concept', canonicalName: 'Sincerity', definition: 'Purity of intention', primaryLanguage: 'en', evidenceRefs: [asset.id] });
+  const concept = await api.createKnowledge({ category: 'Concept', canonicalName: 'Sincerity', definition: 'Purity of intention', primaryLanguage: 'en', evidenceRefs: [asset.id] });
 
   // 2) Knowledge Studio (a different app) discovers the same knowledge.
   const hits = studio.find('Sincerity');
@@ -56,5 +56,5 @@ test('apps as interchangeable views: Public API writes -> Studio reads -> Explor
 
   // The Public API exposes the same canonical objects + event history.
   assert.equal(api.getKnowledge(concept.id)?.id, concept.id);
-  assert.ok(api.getEventHistory(concept.id).length >= 1);
+  assert.ok((await api.getEventHistory(concept.id)).length >= 1);
 });

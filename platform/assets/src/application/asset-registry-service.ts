@@ -611,9 +611,9 @@ export class AssetRegistryService {
     const lineageGraph = this.getLineage(assetId);
 
     // Related events for this subject, captured by-identifier (KMOS-0202 §18).
-    const relatedEvents = this.bus.eventLog
-      .read(1)
-      .filter((s) => s.event.identity.subjectId === assetId);
+    const relatedEvents = (await this.bus.eventLog.read(1)).filter(
+      (s) => s.event.identity.subjectId === assetId,
+    );
     const references: CanonicalReference[] = relatedEvents.map((s) => ({
       relation: 'recordedByEvent',
       targetId: s.event.identity.eventId,

@@ -37,6 +37,12 @@ PROPOSED — awaiting human approval · ACCEPTED — confirmed · SUPERSEDED
 **Status:** ACCEPTED.
 **Decision:** Domain cores have zero infrastructure imports. Postgres, object storage, message broker, identity provider, and AI models are all adapters behind ports. Enforced by architecture-fitness checks.
 
+## D-007 — Align canonical generic defaults with their bound (type soundness)
+**Status:** ACCEPTED (implemented; CI green). Recorded as ADR-0008.
+**Context:** The first real `tsc --build` (board review R-A) exposed 65 type errors. Dominant root cause (~58 sites): canonical generics bounded at `extends object` but defaulted to `Record<string, unknown>`; concrete bodies are `interface`s, which satisfy the bound but not the index-signature default.
+**Decision:** Align the default with the bound (`= object`); bound unchanged. Compile-time only — no runtime/event-format/data change. Safe: nothing indexes `body`/`payload` by arbitrary key. Also complete the canonical `AssetType` union with `'Media'`/`'Publication'` (KMOS-0202). Non-canonical fixes same pass: regeneralize `IdentityService.require`; add optional `InvocationContext.organizationId`; minor lint.
+**Consequence:** Clean `tsc`; CI static/tests/database green; board-review R-A closed. Canonical bodies stay strongly-typed interfaces; arbitrary-key body access disallowed by convention. Taken pre-Architecture-Freeze v1.0.
+
 ---
 
 ## Decisions REQUIRING HUMAN APPROVAL (irreversible / product-level)

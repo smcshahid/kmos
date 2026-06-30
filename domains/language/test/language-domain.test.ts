@@ -18,8 +18,8 @@ function wire() {
   return { bus, knowledge, registry, runtime, language };
 }
 
-function eventTypes(bus: EventBus): Set<string> {
-  return new Set(bus.eventLog.read(1).map((s: StoredEvent) => s.event.identity.type));
+async function eventTypes(bus: EventBus): Promise<Set<string>> {
+  return new Set((await bus.eventLog.read(1)).map((s: StoredEvent) => s.event.identity.type));
 }
 
 test('Language domain processes a transcript: correct -> extract -> translate via workflow/runtime, concepts + multilingual vocabulary land in Knowledge', async () => {
@@ -52,7 +52,7 @@ test('Language domain processes a transcript: correct -> extract -> translate vi
     for (const v of vocab) assert.equal(v.body.knowledgeId, id);
   }
 
-  const types = eventTypes(bus);
+  const types = await eventTypes(bus);
   assert.ok(types.has('TranscriptCorrected'));
   assert.ok(types.has('VocabularyLearned'));
   assert.ok(types.has('CapabilityExecutionCompleted'));
@@ -75,7 +75,7 @@ test('Language domain works without translation: correct + extract only', async 
     assert.equal(vocab.length, 1);
   }
 
-  const types = eventTypes(bus);
+  const types = await eventTypes(bus);
   assert.ok(types.has('TranscriptCorrected'));
   assert.ok(types.has('VocabularyLearned'));
   assert.ok(types.has('CapabilityExecutionCompleted'));

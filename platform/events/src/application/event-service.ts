@@ -75,7 +75,7 @@ export class EventService {
 
   // --- Schema APIs (KMOS-0203 §8) ---
 
-  registerEventSchema(input: RegisterSchemaInput): EventSchemaObject {
+  async registerEventSchema(input: RegisterSchemaInput): Promise<EventSchemaObject> {
     const obj = this.schemas.register(
       {
         eventType: input.eventType,
@@ -85,7 +85,7 @@ export class EventService {
       },
       this.now(),
     );
-    void this.emitLifecycle('SchemaRegistered', { eventType: input.eventType, version: input.version });
+    await this.emitLifecycle('SchemaRegistered', { eventType: input.eventType, version: input.version });
     return obj;
   }
 
@@ -114,23 +114,23 @@ export class EventService {
     return (await this.bus.publish(input.event, opts)) as StoredEvent<P>;
   }
 
-  getEvent(eventId: EventId): StoredEvent | undefined {
-    return this.bus.eventLog.read(1).find((s) => s.event.identity.eventId === eventId);
+  async getEvent(eventId: EventId): Promise<StoredEvent | undefined> {
+    return (await this.bus.eventLog.read(1)).find((s) => s.event.identity.eventId === eventId);
   }
 
-  getEventHistory(streamId: string): readonly StoredEvent[] {
+  async getEventHistory(streamId: string): Promise<readonly StoredEvent[]> {
     return this.bus.eventLog.readStream(streamId);
   }
 
   // --- Correlation & causation (KMOS-0203 §15/§16) ---
 
-  getCorrelationChain(correlationId: EventId): readonly StoredEvent[] {
-    return this.bus.eventLog.read(1).filter((s) => s.event.identity.correlationId === correlationId);
+  async getCorrelationChain(correlationId: EventId): Promise<readonly StoredEvent[]> {
+    return (await this.bus.eventLog.read(1)).filter((s) => s.event.identity.correlationId === correlationId);
   }
 
   /** Walk the causation chain backwards from an event to its root cause. */
-  getCausationChain(eventId: EventId): readonly StoredEvent[] {
-    const all = this.bus.eventLog.read(1);
+  async getCausationChain(eventId: EventId): Promise<readonly StoredEvent[]> {
+    const all = await this.bus.eventLog.read(1);
     const byId = new Map(all.map((s) => [s.event.identity.eventId, s] as const));
     const chain: StoredEvent[] = [];
     let current = byId.get(eventId);
@@ -146,7 +146,7 @@ export class EventService {
 
   // --- Subscriptions (KMOS-0203 §17) ---
 
-  createSubscription(subscriber: string, eventTypes: readonly string[], handler: EventHandler): SubscriptionObject {
+  async createSubscription(subscriber: string, eventTypes: readonly string[], handler: EventHandler): Promise<SubscriptionObject> {
     const obj = this.subs.create(subscriber, eventTypes, this.now());
     // Wrap so paused subscriptions skip delivery (idempotency handled by the bus).
     this.bus.subscribe({
@@ -157,7 +157,7 @@ export class EventService {
         await handler(stored);
       },
     });
-    void this.emitLifecycle('SubscriptionCreated', { subscriber });
+    await this.emitLifecycle('SubscriptionCreated', { subscriber });
     return obj;
   }
 
@@ -173,7 +173,7 @@ export class EventService {
 
   async replayEvents<S>(projection: Projection<S>, fromSequence = 1): Promise<ReplayResult<S>> {
     await this.emitLifecycle('ReplayStarted', { projection: projection.name, fromSequence });
-    const result = replay(this.bus.eventLog, projection, { fromSequence, now: this.now });
+    const result = await replay(this.bus.eventLog, projection, { fromSequence, now: this.now });
     await this.emitLifecycle('ReplayCompleted', {
       projection: projection.name,
       eventsApplied: result.session.eventsApplied,
@@ -187,8 +187,8 @@ export class EventService {
     return this.bus.getDeadLetters();
   }
 
-  getEventMetrics(): EventMetrics {
-    const all = this.bus.eventLog.read(1);
+  async getEventMetrics(): Promise<EventMetrics> {
+    const all = await this.bus.eventLog.read(1);
     const byType: Record<string, number> = {};
     for (const s of all) byType[s.event.identity.type] = (byType[s.event.identity.type] ?? 0) + 1;
     return {

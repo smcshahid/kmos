@@ -9,11 +9,11 @@ import { GovernanceService } from '@kmos/governance';
 
 const now = () => '2026-06-30T00:00:00.000Z';
 
-test('governance audit is append-only; earlier entries are unchanged by later actions', () => {
+test('governance audit is append-only; earlier entries are unchanged by later actions', async () => {
   const gov = new GovernanceService({ now });
   const subject = newCanonicalId('KnowledgeObject');
-  const a1 = gov.requestApproval({ subjectId: subject, reviewers: ['Editor'], mode: 'Single' });
-  gov.grantApproval(a1.id, 'Editor', 'looks good');
+  const a1 = await gov.requestApproval({ subjectId: subject, reviewers: ['Editor'], mode: 'Single' });
+  await gov.grantApproval(a1.id, 'Editor', 'looks good');
   const snapshot1 = gov.getAuditLog().map((e) => e.id);
   const len1 = snapshot1.length;
   assert.ok(len1 >= 1, 'audit recorded');
@@ -24,8 +24,8 @@ test('governance audit is append-only; earlier entries are unchanged by later ac
 
   // A later action only appends; earlier entries are byte-for-byte unchanged.
   const before = JSON.stringify(gov.getAuditLog());
-  const a2 = gov.requestApproval({ subjectId: subject, reviewers: ['Editor'], mode: 'Single' });
-  gov.rejectApproval(a2.id, 'Editor', 'second look: reject');
+  const a2 = await gov.requestApproval({ subjectId: subject, reviewers: ['Editor'], mode: 'Single' });
+  await gov.rejectApproval(a2.id, 'Editor', 'second look: reject');
   const after = gov.getAuditLog();
   assert.ok(after.length > len1, 'audit only grows');
   assert.ok(before.length > 2 && JSON.stringify(after).startsWith(before.slice(0, before.length - 1)) === false || true);

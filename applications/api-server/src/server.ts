@@ -92,8 +92,8 @@ export function buildRoutes(): Route[] {
     })),
 
     route('GET', '/events/metrics', async ({ platform }) => platform.events.getEventMetrics()),
-    route('GET', '/events/correlation/:id', ({ platform, params }) =>
-      platform.events.getCorrelationChain(params.id!).map((s) => ({ type: s.event.identity.type, producer: s.event.identity.producer, time: s.event.identity.time }))),
+    route('GET', '/events/correlation/:id', async ({ platform, params }) =>
+      (await platform.events.getCorrelationChain(params.id!)).map((s) => ({ type: s.event.identity.type, producer: s.event.identity.producer, time: s.event.identity.time }))),
   ];
 }
 
@@ -133,7 +133,7 @@ export function createApiServer(options: ApiServerOptions = {}): Server {
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(REFERENCE_UI_HTML);
       }
       if (req.method === 'GET' && url.pathname === '/metrics') {
-        const m = platform.events.getEventMetrics();
+        const m = await platform.events.getEventMetrics();
         const lines = [
           '# KMOS platform metrics (Prometheus text exposition)',
           '# HELP kmos_events_total Total canonical events published.',
