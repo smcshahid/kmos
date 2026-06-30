@@ -1,0 +1,24 @@
+{
+  "name": "@kmos/connector-framework",
+  "version": "1.0.0-rc.1",
+  "private": true,
+  "type": "module",
+  "description": "KMOS Connector Framework (WP-17; KMOS-0180 \u00a722 External Connectors, KMOS-0170 Connector contributions). A ConnectorHost that governs External Connectors: each connector is a first-class canonical Identity (kind 'Connector', never anonymous) and translates EXTERNAL protocols into CANONICAL objects + events. Connectors are translation adapters only \u2014 business logic stays in capabilities and connectors never bypass the platform (they reach the Asset Registry through canonical APIs and publish canonical events).",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@kmos/canonical-kernel": "*",
+    "@kmos/assets": "*",
+    "@kmos/identity": "*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --experimental-strip-types --import ../../tools/dev/register.mjs --test test/*.test.ts"
+  }
+}
