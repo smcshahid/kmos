@@ -29,8 +29,8 @@ const sampleRecord: ExternalRecord = {
   displayName: 'KMOS Intro',
 };
 
-function typesOf(bus: EventBus): Set<string> {
-  return new Set(bus.eventLog.read(1).map((s: StoredEvent) => s.event.identity.type));
+async function typesOf(bus: EventBus): Promise<Set<string>> {
+  return new Set((await bus.eventLog.read(1)).map((s: StoredEvent) => s.event.identity.type));
 }
 
 test('registering + activating a connector mints a canonical Connector identity and emits ConnectorActivated', async () => {
@@ -46,9 +46,9 @@ test('registering + activating a connector mints a canonical Connector identity 
   assert.equal(entry.activated, true);
 
   // ConnectorActivated landed on the shared bus, attributed to the connector identity.
-  const types = typesOf(bus);
+  const types = await typesOf(bus);
   assert.ok(types.has('ConnectorActivated'), 'ConnectorActivated was published');
-  const activated = bus.eventLog.read(1).find((s) => s.event.identity.type === 'ConnectorActivated');
+  const activated = (await bus.eventLog.read(1)).find((s) => s.event.identity.type === 'ConnectorActivated');
   assert.ok(activated);
   assert.equal(activated.event.identity.actorId, entry.identityId);
   assert.equal((activated.event.payload as { connectorName?: string }).connectorName, 'web-page');
@@ -80,9 +80,9 @@ test('ingesting an external record registers a canonical Asset with external+con
   assert.equal(asset.body.media.mediaType, 'text/html');
 
   // ExternalRecordIngested landed on the shared bus with provenance in its payload.
-  const types = typesOf(bus);
+  const types = await typesOf(bus);
   assert.ok(types.has('ExternalRecordIngested'), 'ExternalRecordIngested was published');
-  const ingested = bus.eventLog.read(1).find((s) => s.event.identity.type === 'ExternalRecordIngested');
+  const ingested = (await bus.eventLog.read(1)).find((s) => s.event.identity.type === 'ExternalRecordIngested');
   assert.ok(ingested);
   const payload = ingested.event.payload as {
     assetId?: string;
@@ -105,7 +105,7 @@ test('the connector never bypasses the Asset Registry: the asset exists in the r
   assert.equal(asset.id, result.assetId);
   // AssetRegistered (the registry's own canonical event) was emitted — proof the
   // host went through the registry rather than fabricating an asset.
-  assert.ok(typesOf(bus).has('AssetRegistered'));
+  assert.ok((await typesOf(bus)).has('AssetRegistered'));
 });
 
 test('a connector is a governed actor: it cannot ingest before activation, and identity is never anonymous', async () => {

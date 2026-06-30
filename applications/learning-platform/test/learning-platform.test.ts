@@ -6,14 +6,14 @@ import { LearningPlatform } from '../src/index.js';
 
 const now = () => '2026-06-30T00:00:00.000Z';
 
-test('Learning Platform assembles curricula + lessons from authoritative Knowledge (thin app)', () => {
+test('Learning Platform assembles curricula + lessons from authoritative Knowledge (thin app)', async () => {
   const bus = new EventBus();
   const knowledge = new KnowledgeService({ bus, now });
   const learning = new LearningPlatform({ knowledge });
 
-  const sincerity = knowledge.createKnowledge({ category: 'Concept', canonicalName: 'Sincerity', definition: 'Purity of intention', primaryLanguage: 'en' });
-  knowledge.addVocabulary(sincerity.id, { language: 'ar', preferredTerm: 'Ikhlas' });
-  const patience = knowledge.createKnowledge({ category: 'Concept', canonicalName: 'Patience', definition: 'Steadfast endurance', primaryLanguage: 'en' });
+  const sincerity = await knowledge.createKnowledge({ category: 'Concept', canonicalName: 'Sincerity', definition: 'Purity of intention', primaryLanguage: 'en' });
+  await knowledge.addVocabulary(sincerity.id, { language: 'ar', preferredTerm: 'Ikhlas' });
+  const patience = await knowledge.createKnowledge({ category: 'Concept', canonicalName: 'Patience', definition: 'Steadfast endurance', primaryLanguage: 'en' });
 
   const lesson = learning.generateLesson(sincerity.id);
   assert.equal(lesson?.title, 'Sincerity');

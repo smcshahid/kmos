@@ -34,7 +34,7 @@ test('identity lifecycle: human, service account, and AI worker are all first-cl
   assert.equal(aiWorker.body.kind, 'AiWorker');
 
   // Non-human identities emit ServiceAccountRegistered in addition to IdentityCreated.
-  const types = typesOf(svc.getEventHistory());
+  const types = typesOf(await svc.getEventHistory());
   assert.equal(types.filter((t) => t === 'IdentityCreated').length, 4); // org + human + svcAcct + aiWorker
   assert.equal(types.filter((t) => t === 'ServiceAccountRegistered').length, 2); // svcAcct + aiWorker
 
@@ -71,7 +71,7 @@ test('roles: assign and revoke (KMOS-0206 §7)', async () => {
   updated = await svc.revokeRole(ada.id, editor.id);
   assert.deepEqual(updated.body.roleIds, []);
 
-  assert.ok(typesOf(svc.getEventHistory()).includes('RoleAssigned'));
+  assert.ok(typesOf(await svc.getEventHistory()).includes('RoleAssigned'));
 });
 
 test('permissions: grant and revoke directly (KMOS-0206 §7)', async () => {
@@ -87,7 +87,7 @@ test('permissions: grant and revoke directly (KMOS-0206 §7)', async () => {
   assert.deepEqual(updated.body.permissionIds, []);
   assert.equal(svc.authorize({ identityId: bot.id, permission: 'assets.publish' }), false);
 
-  assert.ok(typesOf(svc.getEventHistory()).includes('PermissionGranted'));
+  assert.ok(typesOf(await svc.getEventHistory()).includes('PermissionGranted'));
 });
 
 test('authorization: allow via role, deny otherwise, organization scoping (KMOS-0206 §8)', async () => {
@@ -140,7 +140,7 @@ test('delegation: grants scoped authority, is auditable, and authorization honor
   // No privilege escalation: delegation cannot convey a permission the delegator lacks.
   assert.equal(svc.authorize({ identityId: stand_in.id, permission: 'assets.publish' }), false);
 
-  assert.ok(typesOf(svc.getEventHistory()).includes('DelegationCreated'));
+  assert.ok(typesOf(await svc.getEventHistory()).includes('DelegationCreated'));
 });
 
 test('delegation expiry is honored', async () => {
@@ -172,7 +172,7 @@ test('authentication: success issues a valid session and emits AuthenticationSuc
   assert.equal(session.body.identityId, bot.id);
   assert.equal(svc.validateSession(session.id), true);
 
-  assert.ok(typesOf(svc.getEventHistory()).includes('AuthenticationSucceeded'));
+  assert.ok(typesOf(await svc.getEventHistory()).includes('AuthenticationSucceeded'));
 });
 
 test('authentication: failure throws Authentication KmosError and emits AuthenticationFailed', async () => {
@@ -189,7 +189,7 @@ test('authentication: failure throws Authentication KmosError and emits Authenti
     (e) => isKmosError(e) && e.category === 'Authentication',
   );
 
-  assert.equal(typesOf(svc.getEventHistory()).filter((t) => t === 'AuthenticationFailed').length, 2);
+  assert.equal(typesOf(await svc.getEventHistory()).filter((t) => t === 'AuthenticationFailed').length, 2);
 });
 
 test('injected EventBus receives all canonical events (subscriber wiring)', async () => {

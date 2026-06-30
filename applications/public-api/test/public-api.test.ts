@@ -34,9 +34,9 @@ function isCanonicalId(value: unknown): value is string {
   return typeof value === 'string' && value.startsWith('kmos:');
 }
 
-test('createKnowledge returns a canonical KnowledgeObject with a kmos: identifier', () => {
+test('createKnowledge returns a canonical KnowledgeObject with a kmos: identifier', async () => {
   const { api } = wire();
-  const ko = api.createKnowledge({
+  const ko = await api.createKnowledge({
     category: 'Concept',
     canonicalName: 'Sincerity',
     definition: 'Purity of intention',
@@ -52,9 +52,9 @@ test('createKnowledge returns a canonical KnowledgeObject with a kmos: identifie
   assert.equal(typeof ko.lifecycle, 'string');
 });
 
-test('getKnowledge returns the canonical object by canonical id', () => {
+test('getKnowledge returns the canonical object by canonical id', async () => {
   const { api } = wire();
-  const created = api.createKnowledge({
+  const created = await api.createKnowledge({
     category: 'Definition',
     canonicalName: 'Purification',
     definition: 'Cleansing',
@@ -91,7 +91,7 @@ test('getAsset returns a canonical Asset object with no storage internals leaked
 
 test('searchKnowledge finds a created concept (event-driven indexing on the shared bus)', async () => {
   const { api } = wire();
-  const ko = api.createKnowledge({
+  const ko = await api.createKnowledge({
     category: 'Concept',
     canonicalName: 'Patience',
     definition: 'Steadfast endurance',
@@ -108,11 +108,11 @@ test('searchKnowledge finds a created concept (event-driven indexing on the shar
 test('subscribe receives a canonical event when one is published', async () => {
   const { api, bus } = wire();
   const received: StoredEvent[] = [];
-  api.subscribe('external-consumer', ['ConceptCreated'], (stored) => {
+  await api.subscribe('external-consumer', ['ConceptCreated'], (stored) => {
     received.push(stored);
   });
 
-  const ko = api.createKnowledge({
+  const ko = await api.createKnowledge({
     category: 'Concept',
     canonicalName: 'Gratitude',
     definition: 'Thankfulness',
@@ -131,7 +131,7 @@ test('subscribe receives a canonical event when one is published', async () => {
 
 test('getEventHistory returns canonical events for a stream', async () => {
   const { api } = wire();
-  const ko = api.createKnowledge({
+  const ko = await api.createKnowledge({
     category: 'Concept',
     canonicalName: 'Mercy',
     definition: 'Compassion',
@@ -139,7 +139,7 @@ test('getEventHistory returns canonical events for a stream', async () => {
   });
   await tick();
 
-  const history = api.getEventHistory(ko.id);
+  const history = await api.getEventHistory(ko.id);
   assert.ok(history.length >= 1, 'stream has at least the creation event');
   const types = history.map((s) => s.event.identity.type);
   assert.ok(types.includes('ConceptCreated'));
@@ -152,7 +152,7 @@ test('getEventHistory returns canonical events for a stream', async () => {
 
 test('no implementation types leak: returned values are canonical objects/events only', async () => {
   const { api, bus } = wire();
-  const ko = api.createKnowledge({
+  const ko = await api.createKnowledge({
     category: 'Concept',
     canonicalName: 'Trust',
     definition: 'Reliance',
@@ -176,7 +176,7 @@ test('no implementation types leak: returned values are canonical objects/events
   await bus.publish(ev, { streamId: ko.id });
   await tick();
 
-  const history = api.getEventHistory(ko.id);
+  const history = await api.getEventHistory(ko.id);
   const probe = history.find((s) => s.event.identity.producer === 'TestProducer');
   assert.ok(probe, 'the published canonical event is readable through the facade');
   assert.deepEqual(Object.keys(probe!.event).sort(), ['governance', 'identity', 'payload']);

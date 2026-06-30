@@ -109,14 +109,14 @@ test('Administration: request + decide a governance approval, Governance records
     contract,
   });
 
-  const approval = admin.requestApproval(cap.id, ['reviewer-1']);
+  const approval = await admin.requestApproval(cap.id, ['reviewer-1']);
   assert.equal(approval.body.state, 'Pending');
 
   const pendingBefore = admin.pendingApprovals();
   assert.equal(pendingBefore.length, 1, 'the new approval is awaiting a decision');
   assert.equal(pendingBefore[0]!.id, approval.id);
 
-  const decided = admin.decideApproval(approval.id, 'reviewer-1', 'Granted', 'meets policy');
+  const decided = await admin.decideApproval(approval.id, 'reviewer-1', 'Granted', 'meets policy');
   assert.equal(decided.body.state, 'Granted');
 
   // Governance is the authority: read the approval back independently.
@@ -142,10 +142,10 @@ test('Administration owns no canonical facts: every canonical event is produced 
     name: 'C', ownerDomain: 'D', businessPurpose: 'x', version: '1.0.0', contract,
   });
   await admin.certifyCapability(cap.id, '1.0.0', 'Verified', 'gov');
-  const approval = admin.requestApproval(cap.id, ['rv']);
-  admin.decideApproval(approval.id, 'rv', 'Granted', 'ok');
+  const approval = await admin.requestApproval(cap.id, ['rv']);
+  await admin.decideApproval(approval.id, 'rv', 'Granted', 'ok');
 
-  const producers = new Set(bus.eventLog.read().map((s) => s.event.identity.producer));
+  const producers = new Set((await bus.eventLog.read()).map((s) => s.event.identity.producer));
   assert.ok(producers.size > 0, 'platform services produced canonical events');
   for (const p of producers) {
     assert.ok(

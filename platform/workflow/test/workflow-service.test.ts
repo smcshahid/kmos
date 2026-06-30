@@ -59,7 +59,7 @@ test('registered workflows are versioned and immutable (KMOS-0150 §18)', async 
   assert.equal(b.body.version, 2);
   assert.notEqual(a.id, b.id);
   // WorkflowRegistered published on a local catalog (seeded type).
-  const registered = svc.eventBus.eventLog.read(1).filter((s) => s.event.identity.type === 'WorkflowRegistered');
+  const registered = (await svc.eventBus.eventLog.read(1)).filter((s) => s.event.identity.type === 'WorkflowRegistered');
   assert.equal(registered.length, 2);
 });
 
@@ -146,7 +146,7 @@ test('failing activity triggers compensation of completed steps in REVERSE order
   // s1 then s2 completed; compensation runs in reverse: undo2 then undo1.
   assert.deepEqual(compRefs, ['cap:undo2', 'cap:undo1']);
   // CompensationStarted (seeded) published.
-  const started = svc.eventBus.eventLog.read(1).filter((s) => s.event.identity.type === 'CompensationStarted');
+  const started = (await svc.eventBus.eventLog.read(1)).filter((s) => s.event.identity.type === 'CompensationStarted');
   assert.equal(started.length, 1);
 });
 
@@ -160,8 +160,8 @@ test('deterministic replay reconstructs the same execution state (KMOS-0204 §23
   const def = await svc.registerWorkflow({ name: 'rep', ownerDomain: 'd', businessPurpose: 'p', steps });
   const exec = await svc.start(def.id);
 
-  const r1 = svc.reconstructExecution(exec.id);
-  const r2 = svc.reconstructExecution(exec.id);
+  const r1 = await svc.reconstructExecution(exec.id);
+  const r2 = await svc.reconstructExecution(exec.id);
   assert.deepEqual(r1, r2, 'replay is deterministic');
   assert.equal(r1.state, 'Completed');
   assert.deepEqual(r1.completedSteps, ['a', 'b']);
@@ -179,7 +179,7 @@ test('cancel transitions a waiting execution to Cancelled (KMOS-0204 §8)', asyn
   assert.equal(exec.body.state, 'Waiting');
   exec = await svc.cancel(exec.id);
   assert.equal(exec.body.state, 'Cancelled');
-  const cancelled = svc.eventBus.eventLog.read(1).filter((s) => s.event.identity.type === 'WorkflowCancelled');
+  const cancelled = (await svc.eventBus.eventLog.read(1)).filter((s) => s.event.identity.type === 'WorkflowCancelled');
   assert.equal(cancelled.length, 1);
 });
 
@@ -197,7 +197,7 @@ test('timer waits then fires manually to resume execution (KMOS-0204 §5; determ
   await timers.fire(timer.id);
   assert.equal(timers.isArmed(timer.id), false);
   // Firing recorded a TimerExpired event.
-  const expired = svc.eventBus.eventLog.read(1).filter((s) => s.event.identity.type === 'TimerExpired');
+  const expired = (await svc.eventBus.eventLog.read(1)).filter((s) => s.event.identity.type === 'TimerExpired');
   assert.equal(expired.length, 1);
 });
 

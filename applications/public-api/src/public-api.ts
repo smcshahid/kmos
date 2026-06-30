@@ -102,7 +102,7 @@ export class PublicApi {
    * Service and returns the resulting CANONICAL KnowledgeObject (with its
    * `kmos:` identifier). The facade adds no logic.
    */
-  createKnowledge(input: CreateKnowledgeInput): KnowledgeObject {
+  createKnowledge(input: CreateKnowledgeInput): Promise<KnowledgeObject> {
     return this.knowledge.createKnowledge(input);
   }
 
@@ -121,12 +121,12 @@ export class PublicApi {
    * facts. Delegates to the Event Service's governed subscription API. The
    * handler receives canonical events only.
    */
-  subscribe(
+  async subscribe(
     subscriber: string,
     eventTypes: readonly string[],
     handler: EventHandler,
-  ): void {
-    this.events.createSubscription(subscriber, eventTypes, handler);
+  ): Promise<void> {
+    await this.events.createSubscription(subscriber, eventTypes, handler);
   }
 
   /**
@@ -134,7 +134,7 @@ export class PublicApi {
    * id). Returns canonical events in append order; no broker/log internals are
    * exposed beyond the canonical sequence/stream position.
    */
-  getEventHistory(streamId: string): readonly StoredEvent[] {
+  getEventHistory(streamId: string): Promise<readonly StoredEvent[]> {
     return this.events.getEventHistory(streamId);
   }
 }

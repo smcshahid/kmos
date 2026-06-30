@@ -18,11 +18,11 @@ function withCapture(svc: GovernanceService): string[] {
   return types;
 }
 
-test('Policy: registration + immutable versioning + evaluation (KMOS-0207)', () => {
+test('Policy: registration + immutable versioning + evaluation (KMOS-0207)', async () => {
   const svc = new GovernanceService({ now: fixedNow });
   const events = withCapture(svc);
 
-  const { policy, version } = svc.registerPolicy({
+  const { policy, version } = await svc.registerPolicy({
     name: 'PublishGate',
     description: 'Must be approved and integrity-verified',
     rules: [
@@ -35,7 +35,7 @@ test('Policy: registration + immutable versioning + evaluation (KMOS-0207)', () 
   assert.equal(version.body.version, 1);
 
   // New immutable version; prior version object is unchanged.
-  const v2 = svc.registerPolicyVersion(
+  const v2 = await svc.registerPolicyVersion(
     policy.id,
     [{ field: 'approved', operator: 'truthy' }],
     'bob',
@@ -47,9 +47,9 @@ test('Policy: registration + immutable versioning + evaluation (KMOS-0207)', () 
   assert.equal(svc.getPolicy(policy.id)!.body.currentVersion, 2);
 
   // Evaluation is deterministic and explainable against the CURRENT version (v2).
-  const passEval = svc.evaluatePolicy(policy.id, { approved: true });
+  const passEval = await svc.evaluatePolicy(policy.id, { approved: true });
   assert.equal(passEval.satisfied, true);
-  const failEval = svc.evaluatePolicy(policy.id, { approved: false });
+  const failEval = await svc.evaluatePolicy(policy.id, { approved: false });
   assert.equal(failEval.satisfied, false);
   assert.ok(failEval.reasons.some((r) => r.startsWith('FAIL')));
 
@@ -58,16 +58,16 @@ test('Policy: registration + immutable versioning + evaluation (KMOS-0207)', () 
   assert.ok(events.includes('PolicyEvaluated'));
 });
 
-test('Approval: single-reviewer grant produces audit + Decision + event (KMOS-0207)', () => {
+test('Approval: single-reviewer grant produces audit + Decision + event (KMOS-0207)', async () => {
   const svc = new GovernanceService({ now: fixedNow });
   const events = withCapture(svc);
   const subjectId = newCanonicalId('Asset');
 
-  const approval = svc.requestApproval({ subjectId, reviewers: ['alice'], mode: 'Single' });
+  const approval = await svc.requestApproval({ subjectId, reviewers: ['alice'], mode: 'Single' });
   assert.equal(approval.body.state, 'Pending');
   assert.ok(events.includes('ApprovalRequested'));
 
-  const granted = svc.grantApproval(approval.id, 'alice', 'looks good');
+  const granted = await svc.grantApproval(approval.id, 'alice', 'looks good');
   assert.equal(granted.body.state, 'Granted');
   assert.equal(granted.lifecycle, 'Approved');
   assert.ok(events.includes('ApprovalGranted'));
@@ -80,44 +80,44 @@ test('Approval: single-reviewer grant produces audit + Decision + event (KMOS-02
   assert.ok(svc.getAuditTrail(subjectId).length >= 1);
 });
 
-test('Approval: reject ends the approval and publishes ApprovalRejected', () => {
+test('Approval: reject ends the approval and publishes ApprovalRejected', async () => {
   const svc = new GovernanceService({ now: fixedNow });
   const events = withCapture(svc);
   const subjectId = newCanonicalId('Asset');
 
-  const approval = svc.requestApproval({ subjectId, reviewers: ['alice', 'bob'], mode: 'MultipleAll' });
-  const rejected = svc.rejectApproval(approval.id, 'alice', 'fails policy');
+  const approval = await svc.requestApproval({ subjectId, reviewers: ['alice', 'bob'], mode: 'MultipleAll' });
+  const rejected = await svc.rejectApproval(approval.id, 'alice', 'fails policy');
   assert.equal(rejected.body.state, 'Rejected');
   assert.ok(events.includes('ApprovalRejected'));
 
   // No further decisions are allowed on a terminal approval.
-  assert.throws(() => svc.grantApproval(approval.id, 'bob', 'too late'), /already/);
+  await assert.rejects(() => svc.grantApproval(approval.id, 'bob', 'too late'), /already/);
 });
 
-test('Approval: MultipleAll completes only when ALL reviewers approve', () => {
+test('Approval: MultipleAll completes only when ALL reviewers approve', async () => {
   const svc = new GovernanceService({ now: fixedNow });
   const subjectId = newCanonicalId('Asset');
-  const approval = svc.requestApproval({
+  const approval = await svc.requestApproval({
     subjectId,
     reviewers: ['alice', 'bob', 'carol'],
     mode: 'MultipleAll',
   });
 
-  let state = svc.grantApproval(approval.id, 'alice', 'ok');
+  let state = await svc.grantApproval(approval.id, 'alice', 'ok');
   assert.equal(state.body.state, 'Pending', 'one of three: still pending');
-  state = svc.grantApproval(approval.id, 'bob', 'ok');
+  state = await svc.grantApproval(approval.id, 'bob', 'ok');
   assert.equal(state.body.state, 'Pending', 'two of three: still pending');
-  state = svc.grantApproval(approval.id, 'carol', 'ok');
+  state = await svc.grantApproval(approval.id, 'carol', 'ok');
   assert.equal(state.body.state, 'Granted', 'all three: granted');
 
   // A reviewer cannot vote twice.
-  assert.throws(() => svc.grantApproval(approval.id, 'alice', 'again'), /already/);
+  await assert.rejects(() => svc.grantApproval(approval.id, 'alice', 'again'), /already/);
 });
 
-test('Approval: escalation flag is preserved', () => {
+test('Approval: escalation flag is preserved', async () => {
   const svc = new GovernanceService({ now: fixedNow });
   const subjectId = newCanonicalId('Asset');
-  const approval = svc.requestApproval({
+  const approval = await svc.requestApproval({
     subjectId,
     reviewers: ['alice'],
     mode: 'Single',
@@ -126,30 +126,30 @@ test('Approval: escalation flag is preserved', () => {
   assert.equal(approval.body.escalated, true);
 });
 
-test('Review: create + complete preserves supporting evidence', () => {
+test('Review: create + complete preserves supporting evidence', async () => {
   const svc = new GovernanceService({ now: fixedNow });
   const events = withCapture(svc);
   const subjectId = newCanonicalId('KnowledgeObject');
 
-  const review = svc.createReview(subjectId, 'editor');
-  const done = svc.completeReview(review.id, 'Pass', ['source verified', 'two citations checked']);
+  const review = await svc.createReview(subjectId, 'editor');
+  const done = await svc.completeReview(review.id, 'Pass', ['source verified', 'two citations checked']);
   assert.equal(done.body.state, 'Completed');
   assert.equal(done.body.conclusion, 'Pass');
   assert.deepEqual(done.body.evidence, ['source verified', 'two citations checked']);
   assert.ok(events.includes('ReviewCompleted'));
 });
 
-test('Certification: grant + revoke + history (KMOS-0207)', () => {
+test('Certification: grant + revoke + history (KMOS-0207)', async () => {
   const svc = new GovernanceService({ now: fixedNow });
   const events = withCapture(svc);
   const subjectId = newCanonicalId('Capability');
 
-  const cert = svc.grantCertification(subjectId, 'Gold', 'cert-authority');
+  const cert = await svc.grantCertification(subjectId, 'Gold', 'cert-authority');
   assert.equal(cert.body.state, 'Granted');
   assert.equal(svc.getCurrentCertification(subjectId)!.body.level, 'Gold');
   assert.ok(events.includes('CertificationGranted'));
 
-  const revoked = svc.revokeCertification(cert.id, 'cert-authority', 'capability deprecated');
+  const revoked = await svc.revokeCertification(cert.id, 'cert-authority', 'capability deprecated');
   assert.equal(revoked.body.state, 'Revoked');
   assert.equal(revoked.body.revocationReason, 'capability deprecated');
   assert.ok(events.includes('CertificationRevoked'));
@@ -161,12 +161,12 @@ test('Certification: grant + revoke + history (KMOS-0207)', () => {
   assert.equal(history[1]!.body.state, 'Revoked');
 });
 
-test('Compliance: record produces ComplianceRecord + event', () => {
+test('Compliance: record produces ComplianceRecord + event', async () => {
   const svc = new GovernanceService({ now: fixedNow });
   const events = withCapture(svc);
   const subjectId = newCanonicalId('Asset');
 
-  const record = svc.recordCompliance(subjectId, 'GDPR', 'Compliant', 'dpo', ['DPIA filed']);
+  const record = await svc.recordCompliance(subjectId, 'GDPR', 'Compliant', 'dpo', ['DPIA filed']);
   assert.equal(record.body.framework, 'GDPR');
   assert.equal(record.body.result, 'Compliant');
   assert.deepEqual(record.body.evidence, ['DPIA filed']);
@@ -174,12 +174,12 @@ test('Compliance: record produces ComplianceRecord + event', () => {
   assert.ok(events.includes('ComplianceVerified'));
 });
 
-test('Risk: assessment computes residual risk and is queryable (KMOS-0207)', () => {
+test('Risk: assessment computes residual risk and is queryable (KMOS-0207)', async () => {
   const svc = new GovernanceService({ now: fixedNow });
   const events = withCapture(svc);
   const subjectId = newCanonicalId('Workflow');
 
-  const risk = svc.assessRisk({
+  const risk = await svc.assessRisk({
     subjectId,
     level: 'High',
     impact: 4,
@@ -195,11 +195,11 @@ test('Risk: assessment computes residual risk and is queryable (KMOS-0207)', () 
   assert.ok(events.includes('RiskAssessed'));
 });
 
-test('Exception: create + close lifecycle is visible throughout (KMOS-0207)', () => {
+test('Exception: create + close lifecycle is visible throughout (KMOS-0207)', async () => {
   const svc = new GovernanceService({ now: fixedNow });
   const events = withCapture(svc);
 
-  const exc = svc.createException({
+  const exc = await svc.createException({
     reason: 'temporary waiver for migration',
     approver: 'cto',
     scope: 'asset:legacy-import',
@@ -210,7 +210,7 @@ test('Exception: create + close lifecycle is visible throughout (KMOS-0207)', ()
   assert.equal(svc.listExceptions().length, 1);
   assert.ok(events.includes('ExceptionCreated'));
 
-  const closed = svc.closeException(exc.id, 'migration complete');
+  const closed = await svc.closeException(exc.id, 'migration complete');
   assert.equal(closed.body.state, 'Closed');
   assert.equal(closed.body.closeReason, 'migration complete');
   assert.ok(events.includes('ExceptionClosed'));
@@ -219,12 +219,12 @@ test('Exception: create + close lifecycle is visible throughout (KMOS-0207)', ()
   assert.equal(svc.getException(exc.id)!.body.state, 'Closed');
 });
 
-test('Trust: assessTrust returns explainable reasons for trusted input (KMOS-0207)', () => {
+test('Trust: assessTrust returns explainable reasons for trusted input (KMOS-0207)', async () => {
   const svc = new GovernanceService({ now: fixedNow });
   const events = withCapture(svc);
   const subjectId = newCanonicalId('Asset');
 
-  const result = svc.assessTrust({
+  const result = await svc.assessTrust({
     subjectId,
     evidence: {
       knowledgeProvenance: true,
@@ -244,13 +244,13 @@ test('Trust: assessTrust returns explainable reasons for trusted input (KMOS-020
   assert.ok(events.includes('TrustAssessmentCompleted'));
 });
 
-test('Trust: assessTrust explains an UNTRUSTED decision (KMOS-0207)', () => {
+test('Trust: assessTrust explains an UNTRUSTED decision (KMOS-0207)', async () => {
   const svc = new GovernanceService({ now: fixedNow });
   const subjectId = newCanonicalId('Asset');
 
   // Mandatory evidence (identity, policy compliance) missing -> not trusted,
   // and every gap is explained (never undocumented judgment).
-  const result = svc.assessTrust({
+  const result = await svc.assessTrust({
     subjectId,
     evidence: { knowledgeProvenance: true, assetIntegrity: false },
   });
@@ -261,12 +261,12 @@ test('Trust: assessTrust explains an UNTRUSTED decision (KMOS-0207)', () => {
   assert.ok(result.reasons.some((r) => r.includes('NOT TRUSTED')));
 });
 
-test('Audit: every governance decision yields an immutable audit record', () => {
+test('Audit: every governance decision yields an immutable audit record', async () => {
   const svc = new GovernanceService({ now: fixedNow });
   const subjectId = newCanonicalId('Asset');
 
-  svc.grantCertification(subjectId, 'Silver', 'authority');
-  svc.recordCompliance(subjectId, 'SOC2', 'Compliant', 'auditor');
+  await svc.grantCertification(subjectId, 'Silver', 'authority');
+  await svc.recordCompliance(subjectId, 'SOC2', 'Compliant', 'auditor');
   const trail = svc.getAuditTrail(subjectId);
   assert.ok(trail.length >= 2);
   for (const entry of trail) {

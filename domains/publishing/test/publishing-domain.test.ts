@@ -20,8 +20,8 @@ function wire() {
   return { bus, assets, governance, registry, runtime, publishing };
 }
 
-function eventTypes(bus: EventBus): Set<string> {
-  return new Set(bus.eventLog.read(1).map((s: StoredEvent) => s.event.identity.type));
+async function eventTypes(bus: EventBus): Promise<Set<string>> {
+  return new Set((await bus.eventLog.read(1)).map((s: StoredEvent) => s.event.identity.type));
 }
 
 test('Publishing happy path: capability metadata -> Publication asset w/ lineage -> approval granted -> PublicationReleased', async () => {
@@ -65,7 +65,7 @@ test('Publishing happy path: capability metadata -> Publication asset w/ lineage
   assert.equal(approval?.body.state, 'Granted');
 
   // Events on the shared bus.
-  const types = eventTypes(bus);
+  const types = await eventTypes(bus);
   assert.ok(types.has('AssetRegistered'));
   assert.ok(types.has('CapabilityExecutionCompleted')); // runtime executed the metadata capability
   assert.ok(types.has('PublicationMetadataGenerated'));
@@ -104,7 +104,7 @@ test('Publishing rejection path: governance gate blocks release, no PublicationR
   assert.equal(approval?.body.state, 'Rejected');
 
   // No release facts emitted.
-  const types = eventTypes(bus);
+  const types = await eventTypes(bus);
   assert.ok(types.has('ApprovalRejected'));
   assert.ok(!types.has('PublicationReleased'));
   assert.ok(!types.has('PublicationPrepared'));
@@ -119,7 +119,7 @@ test('Publishing holds no business logic: metadata is produced only via the capa
     approver: 'editor@kmos',
   });
   // The capability ran (its execution-completed event is present) and produced the metadata.
-  assert.ok(eventTypes(bus).has('CapabilityExecutionCompleted'));
+  assert.ok((await eventTypes(bus)).has('CapabilityExecutionCompleted'));
   assert.equal(res.metadata.slug, 'composition-over-inheritance');
   assert.ok(res.released);
 });

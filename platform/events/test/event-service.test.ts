@@ -16,31 +16,31 @@ test('Event Service: publish, history, correlation and causation chains (KMOS-02
   const e3 = createEvent({ type: 'KnowledgeUpdated', schemaVersion: '1.0', producer: 'KnowledgeService', subjectId: assetId, payload: { assetId }, causedBy: e2 });
   await svc.publishEvent({ event: e3, streamId: assetId });
 
-  assert.equal(svc.getEventHistory(assetId).length, 3);
-  assert.equal(svc.getEvent(e2.identity.eventId)?.event.identity.type, 'TranscriptGenerated');
+  assert.equal((await svc.getEventHistory(assetId)).length, 3);
+  assert.equal((await svc.getEvent(e2.identity.eventId))?.event.identity.type, 'TranscriptGenerated');
 
-  const corr = svc.getCorrelationChain(e1.identity.correlationId);
+  const corr = await svc.getCorrelationChain(e1.identity.correlationId);
   assert.equal(corr.length, 3);
 
-  const causation = svc.getCausationChain(e3.identity.eventId);
+  const causation = await svc.getCausationChain(e3.identity.eventId);
   assert.deepEqual(causation.map((s) => s.event.identity.type), ['AssetRegistered', 'TranscriptGenerated', 'KnowledgeUpdated']);
 });
 
-test('Event Service: schema registry enforces BACKWARD compatibility (KMOS-0203 §12)', () => {
+test('Event Service: schema registry enforces BACKWARD compatibility (KMOS-0203 §12)', async () => {
   const svc = new EventService({ now: fixedNow });
-  svc.registerEventSchema({
+  await svc.registerEventSchema({
     eventType: 'AssetRegistered',
     version: '1.0',
     schema: { type: 'object', required: ['assetId'], properties: { assetId: { type: 'string' } } },
   });
   // Backward-compatible: add optional field -> OK
-  svc.registerEventSchema({
+  await svc.registerEventSchema({
     eventType: 'AssetRegistered',
     version: '1.1',
     schema: { type: 'object', required: ['assetId'], properties: { assetId: { type: 'string' }, mediaType: { type: 'string' } } },
   });
   // Breaking: add a new required field -> rejected
-  assert.throws(() =>
+  await assert.rejects(() =>
     svc.registerEventSchema({
       eventType: 'AssetRegistered',
       version: '2.0',
@@ -49,9 +49,9 @@ test('Event Service: schema registry enforces BACKWARD compatibility (KMOS-0203 
   /not BACKWARD compatible/);
 });
 
-test('Event Service: validateEvent checks registered payload schema', () => {
+test('Event Service: validateEvent checks registered payload schema', async () => {
   const svc = new EventService({ now: fixedNow });
-  svc.registerEventSchema({
+  await svc.registerEventSchema({
     eventType: 'AssetRegistered',
     version: '1.0',
     schema: { type: 'object', required: ['assetId'], properties: { assetId: { type: 'string', format: 'canonical-id' } } },
@@ -65,7 +65,7 @@ test('Event Service: validateEvent checks registered payload schema', () => {
 test('Event Service: subscriptions deliver, pause, and resume (KMOS-0203 §17)', async () => {
   const svc = new EventService({ now: fixedNow });
   const received: string[] = [];
-  svc.createSubscription('projector', ['AssetRegistered'], (s: StoredEvent) => {
+  await svc.createSubscription('projector', ['AssetRegistered'], (s: StoredEvent) => {
     received.push(s.event.identity.eventId);
   });
 
@@ -101,7 +101,7 @@ test('Event Service: replay rebuilds a projection and emits replay lifecycle eve
   assert.equal(session.projection, 'count-by-type');
 
   // ReplayStarted + ReplayCompleted were emitted into the log
-  const metrics = svc.getEventMetrics();
+  const metrics = await svc.getEventMetrics();
   assert.ok(metrics.byType['ReplayStarted'] >= 1);
   assert.ok(metrics.byType['ReplayCompleted'] >= 1);
 });

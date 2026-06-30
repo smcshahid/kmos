@@ -17,7 +17,7 @@ function makeService(): KnowledgeService {
 test('createKnowledge: creates a Draft/Created object with provenance and emits KnowledgeCreated (KMOS-0201)', async () => {
   const svc = makeService();
   const evidence = newCanonicalId('Asset');
-  const ko = svc.createKnowledge({
+  const ko = await svc.createKnowledge({
     category: 'Topic',
     canonicalName: 'Photosynthesis',
     definition: 'Conversion of light into chemical energy.',
@@ -33,14 +33,14 @@ test('createKnowledge: creates a Draft/Created object with provenance and emits 
   assert.equal(ko.body.provenance.unverified, false);
   assert.deepEqual(ko.governance.evidenceRefs, [evidence]);
 
-  const log = svc.eventBus.eventLog.read(1);
+  const log = await svc.eventBus.eventLog.read(1);
   assert.equal(log.length, 1);
   assert.equal(log[0]!.event.identity.type, 'KnowledgeCreated');
 });
 
-test('createKnowledge without evidence is flagged unverified (KMOS-0201 provenance)', () => {
+test('createKnowledge without evidence is flagged unverified (KMOS-0201 provenance)', async () => {
   const svc = makeService();
-  const ko = svc.createKnowledge({
+  const ko = await svc.createKnowledge({
     category: 'Definition',
     canonicalName: 'Entropy',
     definition: 'A measure of disorder.',
@@ -50,15 +50,15 @@ test('createKnowledge without evidence is flagged unverified (KMOS-0201 provenan
   assert.equal(ko.body.provenance.confidence, 0);
 });
 
-test('updateKnowledge creates a NEW version, preserving immutable history (KMOS-0201)', () => {
+test('updateKnowledge creates a NEW version, preserving immutable history (KMOS-0201)', async () => {
   const svc = makeService();
-  const ko = svc.createKnowledge({
+  const ko = await svc.createKnowledge({
     category: 'Topic',
     canonicalName: 'Gravity',
     definition: 'Attraction between masses.',
     primaryLanguage: 'en',
   });
-  const v2 = svc.updateKnowledge(ko.id, { definition: 'Curvature of spacetime.' }, 'general-relativity correction');
+  const v2 = await svc.updateKnowledge(ko.id, { definition: 'Curvature of spacetime.' }, 'general-relativity correction');
 
   assert.equal(v2.version, 2);
   assert.equal(v2.body.definition, 'Curvature of spacetime.');
@@ -72,12 +72,12 @@ test('updateKnowledge creates a NEW version, preserving immutable history (KMOS-
   assert.equal(svc.getKnowledge(ko.id)!.version, 2);
 });
 
-test('Relationship is a first-class, versioned canonical object (KMOS-0201 §12)', () => {
+test('Relationship is a first-class, versioned canonical object (KMOS-0201 §12)', async () => {
   const svc = makeService();
-  const a = svc.createKnowledge({ category: 'Topic', canonicalName: 'Cause', definition: 'x', primaryLanguage: 'en' });
-  const b = svc.createKnowledge({ category: 'Topic', canonicalName: 'Effect', definition: 'y', primaryLanguage: 'en' });
+  const a = await svc.createKnowledge({ category: 'Topic', canonicalName: 'Cause', definition: 'x', primaryLanguage: 'en' });
+  const b = await svc.createKnowledge({ category: 'Topic', canonicalName: 'Effect', definition: 'y', primaryLanguage: 'en' });
 
-  const rel = svc.createRelationship({ relation: 'Supports', sourceId: a.id, targetId: b.id, confidence: 0.7 });
+  const rel = await svc.createRelationship({ relation: 'Supports', sourceId: a.id, targetId: b.id, confidence: 0.7 });
   assert.equal(rel.type, 'Relationship');
   assert.equal(rel.owner, 'KnowledgeService');
   assert.equal(rel.version, 1);
@@ -85,31 +85,31 @@ test('Relationship is a first-class, versioned canonical object (KMOS-0201 §12)
   assert.equal(rel.body.sourceId, a.id);
 
   // Versioned like any knowledge object.
-  const rel2 = svc.updateRelationship(rel.id, { confidence: 0.95 }, 'stronger evidence');
+  const rel2 = await svc.updateRelationship(rel.id, { confidence: 0.95 }, 'stronger evidence');
   assert.equal(rel2.version, 2);
   assert.equal(rel2.body.provenance.confidence, 0.95);
   assert.equal(svc.getRelationshipHistory(rel.id).length, 2);
 });
 
-test('broken relationships are rejected — no orphaned edges (KMOS-0201 §12/§13)', () => {
+test('broken relationships are rejected — no orphaned edges (KMOS-0201 §12/§13)', async () => {
   const svc = makeService();
-  const a = svc.createKnowledge({ category: 'Topic', canonicalName: 'Real', definition: 'x', primaryLanguage: 'en' });
+  const a = await svc.createKnowledge({ category: 'Topic', canonicalName: 'Real', definition: 'x', primaryLanguage: 'en' });
   const ghost = newCanonicalId('KnowledgeObject');
 
-  assert.throws(
+  await assert.rejects(
     () => svc.createRelationship({ relation: 'References', sourceId: a.id, targetId: ghost }),
     (err: unknown) => isKmosError(err) && err.category === 'NotFound' && err.code === 'knowledge.relationship.broken_target',
   );
-  assert.throws(
+  await assert.rejects(
     () => svc.createRelationship({ relation: 'References', sourceId: ghost, targetId: a.id }),
     (err: unknown) => isKmosError(err) && err.code === 'knowledge.relationship.broken_source',
   );
 });
 
-test('duplicate concept within same org+language is rejected with Conflict (KMOS-0201 §13)', () => {
+test('duplicate concept within same org+language is rejected with Conflict (KMOS-0201 §13)', async () => {
   const svc = makeService();
   const org = newCanonicalId('Organization');
-  const first = svc.createKnowledge({
+  const first = await svc.createKnowledge({
     category: 'Concept',
     canonicalName: 'Tawhid',
     definition: 'Oneness.',
@@ -118,7 +118,7 @@ test('duplicate concept within same org+language is rejected with Conflict (KMOS
   });
   assert.equal(first.type, 'Concept');
 
-  assert.throws(
+  await assert.rejects(
     () =>
       svc.createKnowledge({
         category: 'Concept',
@@ -135,23 +135,23 @@ test('duplicate concept within same org+language is rejected with Conflict (KMOS
   assert.equal(existing!.id, first.id);
 
   // Same name in a DIFFERENT language is NOT a duplicate.
-  assert.doesNotThrow(() =>
+  await assert.doesNotReject(() =>
     svc.createKnowledge({ category: 'Concept', canonicalName: 'Tawhid', definition: 'Oneness.', primaryLanguage: 'en', organizationId: org }),
   );
 });
 
-test('multilingual: one language-independent KO, many Vocabulary objects, no duplicate KO (KMOS-0130 §14)', () => {
+test('multilingual: one language-independent KO, many Vocabulary objects, no duplicate KO (KMOS-0130 §14)', async () => {
   const svc = makeService();
-  const ko = svc.createKnowledge({
+  const ko = await svc.createKnowledge({
     category: 'Concept',
     canonicalName: 'Water',
     definition: 'H2O.',
     primaryLanguage: 'en',
   });
 
-  const en = svc.addVocabulary(ko.id, { language: 'en', preferredTerm: 'Water', aliases: ['H2O'] });
-  const fr = svc.addVocabulary(ko.id, { language: 'fr', preferredTerm: 'Eau' });
-  const ar = svc.addVocabulary(ko.id, { language: 'ar', preferredTerm: 'ماء', transliteration: 'maa' });
+  const en = await svc.addVocabulary(ko.id, { language: 'en', preferredTerm: 'Water', aliases: ['H2O'] });
+  const fr = await svc.addVocabulary(ko.id, { language: 'fr', preferredTerm: 'Eau' });
+  const ar = await svc.addVocabulary(ko.id, { language: 'ar', preferredTerm: 'ماء', transliteration: 'maa' });
 
   // All three vocab objects reference the SAME KnowledgeObject.
   assert.equal(en.body.knowledgeId, ko.id);
@@ -168,27 +168,27 @@ test('multilingual: one language-independent KO, many Vocabulary objects, no dup
   assert.equal(koNodes.length, 1);
 });
 
-test('approval workflow advances the canonical lifecycle and emits KnowledgeApproved (KMOS-0201)', () => {
+test('approval workflow advances the canonical lifecycle and emits KnowledgeApproved (KMOS-0201)', async () => {
   const svc = makeService();
-  const ko = svc.createKnowledge({ category: 'Teaching', canonicalName: 'Lesson 1', definition: 'x', primaryLanguage: 'en' });
-  const approved = svc.approve(ko.id);
+  const ko = await svc.createKnowledge({ category: 'Teaching', canonicalName: 'Lesson 1', definition: 'x', primaryLanguage: 'en' });
+  const approved = await svc.approve(ko.id);
   assert.equal(approved.lifecycle, 'Approved');
 
-  const types = svc.eventBus.eventLog.read(1).map((s) => s.event.identity.type);
+  const types = (await svc.eventBus.eventLog.read(1)).map((s) => s.event.identity.type);
   assert.ok(types.includes('KnowledgeApproved'), 'KnowledgeApproved must be published');
 
   // Illegal transitions are rejected.
-  assert.throws(
+  await assert.rejects(
     () => svc.advanceLifecycle(ko.id, 'Created'),
     (err: unknown) => isKmosError(err) && err.code === 'knowledge.lifecycle.illegal_transition',
   );
 });
 
-test('graph projection: derived from authoritative objects and regenerable from the event log (KMOS-0201 §12)', () => {
+test('graph projection: derived from authoritative objects and regenerable from the event log (KMOS-0201 §12)', async () => {
   const svc = makeService();
-  const a = svc.createKnowledge({ category: 'Topic', canonicalName: 'A', definition: 'a', primaryLanguage: 'en' });
-  const b = svc.createKnowledge({ category: 'Topic', canonicalName: 'B', definition: 'b', primaryLanguage: 'en' });
-  const rel = svc.createRelationship({ relation: 'RelatedTo', sourceId: a.id, targetId: b.id });
+  const a = await svc.createKnowledge({ category: 'Topic', canonicalName: 'A', definition: 'a', primaryLanguage: 'en' });
+  const b = await svc.createKnowledge({ category: 'Topic', canonicalName: 'B', definition: 'b', primaryLanguage: 'en' });
+  const rel = await svc.createRelationship({ relation: 'RelatedTo', sourceId: a.id, targetId: b.id });
 
   const fromStore = svc.buildGraphProjection();
   assert.equal(fromStore.nodes.length, 2);
@@ -197,7 +197,7 @@ test('graph projection: derived from authoritative objects and regenerable from 
   assert.equal(fromStore.edges[0]!.sourceId, a.id);
 
   // Regenerate the graph purely by folding the immutable event log.
-  const fromEvents = svc.buildGraphFromEvents();
+  const fromEvents = await svc.buildGraphFromEvents();
   assert.equal(fromEvents.nodes.length, 2);
   assert.equal(fromEvents.edges.length, 1);
 
@@ -225,11 +225,11 @@ test('constructor accepts an injected EventBus and publishes every meaningful ch
     },
   });
   const svc = new KnowledgeService({ bus, now: fixedNow });
-  const a = svc.createKnowledge({ category: 'Topic', canonicalName: 'A', definition: 'a', primaryLanguage: 'en' });
-  const b = svc.createKnowledge({ category: 'Concept', canonicalName: 'B', definition: 'b', primaryLanguage: 'en' });
-  svc.addVocabulary(b.id, { language: 'fr', preferredTerm: 'Bee' });
-  svc.createRelationship({ relation: 'Defines', sourceId: b.id, targetId: a.id });
-  svc.createCollection('set', [a.id, b.id]);
+  const a = await svc.createKnowledge({ category: 'Topic', canonicalName: 'A', definition: 'a', primaryLanguage: 'en' });
+  const b = await svc.createKnowledge({ category: 'Concept', canonicalName: 'B', definition: 'b', primaryLanguage: 'en' });
+  await svc.addVocabulary(b.id, { language: 'fr', preferredTerm: 'Bee' });
+  await svc.createRelationship({ relation: 'Defines', sourceId: b.id, targetId: a.id });
+  await svc.createCollection('set', [a.id, b.id]);
 
   // allow async dispatch microtasks to settle
   await Promise.resolve();
