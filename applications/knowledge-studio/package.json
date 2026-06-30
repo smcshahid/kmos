@@ -1,0 +1,24 @@
+{
+  "name": "@kmos/knowledge-studio",
+  "version": "1.0.0-rc.1",
+  "private": true,
+  "type": "module",
+  "description": "Knowledge Studio (KMOS-0009): a THIN application that explores institutional knowledge by composing the Search and Knowledge platform services. Contains no business logic.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@kmos/canonical-kernel": "*",
+    "@kmos/search": "*",
+    "@kmos/knowledge": "*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --experimental-strip-types --import ../../tools/dev/register.mjs --test test/*.test.ts"
+  }
+}
