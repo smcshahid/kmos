@@ -21,6 +21,8 @@ import { findEvidence } from './evidence.js';
 import { resolveSource, type TranscriptFetcher } from './acquisition.js';
 import { toSrt, toVtt } from './subtitles.js';
 import { chapterClips, highlightReel, type HighlightSpan } from './clips.js';
+import { extractiveSummary } from './summary.js';
+import { detectMoments } from './moments.js';
 import type {
   ConceptView, LineageNode, RelatedConcept, Episode, EpisodeKind, StageId, StageState, TrustView,
 } from './types.js';
@@ -47,6 +49,8 @@ const STAGE_DEFS: { id: StageId; label: string }[] = [
   { id: 'relate', label: 'Relationship discovery' },
   { id: 'trust', label: 'Trust assessment' },
   { id: 'index', label: 'Search indexing' },
+  { id: 'summary', label: 'Summary' },
+  { id: 'moments', label: 'Moment detection' },
   { id: 'subtitles', label: 'Subtitles' },
   { id: 'clips', label: 'Clips & reel' },
   { id: 'package', label: 'Packaging' },
@@ -275,6 +279,23 @@ export class PodcastStudioService {
     await this.p.search.rebuild();
     this.doneStage(ep, 'index');
 
+    // Concept names (for summary / moments / highlight reel).
+    const conceptNames: string[] = [];
+    for (const cid of ep.conceptIds) {
+      const ko = this.p.knowledge.getKnowledge(cid);
+      if (ko) conceptNames.push(ko.body.canonicalName);
+    }
+
+    // 9a) Summary — extractive reference (LLM provider on the estate).
+    this.startStage(ep, 'summary', 'reference', 'Summarizing the episode (extractive reference; LLM in production).');
+    ep.summary = extractiveSummary(ep.segments, conceptNames);
+    this.doneStage(ep, 'summary', 'done', ep.summary ? `${ep.summary.split(/\s+/).length} words.` : 'No summary.');
+
+    // 9a2) Moments — notable timestamps to jump to / clip.
+    this.startStage(ep, 'moments', 'reference', 'Detecting notable moments (reference; LLM in production).');
+    ep.moments = detectMoments(ep.segments, conceptNames);
+    this.doneStage(ep, 'moments', 'done', `${ep.moments.length} moments.`);
+
     // 9b) Subtitles — real SRT/VTT tracks (offline capability), registered with lineage.
     this.startStage(ep, 'subtitles', 'projection', 'Generating SRT + VTT subtitle tracks.');
     ep.subtitleSrt = toSrt(ep.segments);
@@ -291,13 +312,7 @@ export class PodcastStudioService {
 
     // 9c) Clips + highlight reel — a deterministic cut plan (render via ffmpeg on the estate).
     this.startStage(ep, 'clips', 'external', 'Planning chapter clips + a highlight reel (render via an ffmpeg capability).');
-    const spans: HighlightSpan[] = [];
-    for (const cid of ep.conceptIds.slice(0, 6)) {
-      const ko = this.p.knowledge.getKnowledge(cid);
-      if (!ko) continue;
-      const evq = findEvidence(ep.segments, ko.body.canonicalName, { maxQuotes: 1 })[0];
-      if (evq) spans.push({ startSec: evq.startSec, endSec: evq.endSec, label: ko.body.canonicalName });
-    }
+    const spans: HighlightSpan[] = (ep.moments ?? []).map((m) => ({ startSec: m.startSec, endSec: m.endSec, label: m.label }));
     ep.clips = [...chapterClips(ep.chapters), ...highlightReel(spans, ep.segments, { maxClips: 5 })];
     this.doneStage(ep, 'clips', 'done', `${ep.clips.length} clips planned (${ep.chapters.length} chapter + highlight reel).`);
 

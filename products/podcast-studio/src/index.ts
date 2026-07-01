@@ -15,4 +15,6 @@ export * from './evidence.js';
 export * from './acquisition.js';
 export * from './subtitles.js';
 export * from './clips.js';
+export * from './summary.js';
+export * from './moments.js';
 export { SAMPLE_TITLE, SAMPLE_TRANSCRIPT } from './sample.js';

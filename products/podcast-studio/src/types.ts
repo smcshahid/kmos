@@ -56,6 +56,8 @@ export type StageId =
   | 'relate'
   | 'trust'
   | 'index'
+  | 'summary'
+  | 'moments'
   | 'subtitles'
   | 'clips'
   | 'package';
