@@ -2,8 +2,11 @@
 
 ## Status
 
-**Accepted-plan** — the final stabilization initiative before application-focused
-development. Consistent with [ADR-0012](0012-architecture-freeze-and-application-driven-evolution.md)
+**Accepted** — executed 2026-07-01 (provider config model + `openai-compatible` adapter
+shipped; both flagship apps provider-unaware; operational docs consolidated; full suite
+326 pass/0 fail, fitness clean, conformance COMPLIANT). Close-out + final assessment:
+[`engineering/review/22-ESRI-01-CLOSEOUT.md`](../../engineering/review/22-ESRI-01-CLOSEOUT.md).
+The final stabilization initiative before application-focused development. Consistent with [ADR-0012](0012-architecture-freeze-and-application-driven-evolution.md)
 (application-driven evolution), [ADR-0013](0013-provider-capability-extraction-kcsi-01.md)
 (KCSI-01 providers), [ADR-0014](0014-ecosystem-architecture-and-constitution-keai-01.md)
 (Ecosystem Constitution), and the SDK Strategy. Plan:
