@@ -24,7 +24,7 @@ export { STUDIO_HTML } from './web.js';
 export { SAMPLE_TITLE, SAMPLE_TRANSCRIPT } from './sample.js';
 
 import { PgSqlClient } from '@kmos/events';
-import { createOllamaExtraction } from '@kmos/providers';
+import { createKnowledgeExtractionFromConfig, extractionConfigFromEnv } from '@kmos/providers';
 import { createPodcastPlatformFromEnv } from './platform.js';
 import { PodcastStudioService } from './studio.js';
 import { PostgresEpisodeStore } from './episode-store.js';
@@ -37,10 +37,10 @@ const isMain = import.meta.url === `file://${process.argv[1]}`
 if (isMain) {
   const port = Number(process.env.PORT ?? 8091);
   const url = process.env.KMOS_DATABASE_URL;
-  const ollamaUrl = process.env.OLLAMA_URL;
-  const extraction = ollamaUrl
-    ? createOllamaExtraction({ url: ollamaUrl, ...(process.env.OLLAMA_MODEL ? { model: process.env.OLLAMA_MODEL } : {}) })
-    : undefined;
+  // Provider-unaware LLM concept extraction (ESRI-01 / ADR-0016): local (Ollama) or any
+  // OpenAI-compatible cloud, selected by config; switching providers is env, not code.
+  const llmConfig = extractionConfigFromEnv();
+  const extraction = createKnowledgeExtractionFromConfig(llmConfig);
   const platform = await createPodcastPlatformFromEnv({
     enforce: process.env.KMOS_ENFORCE === 'true',
     ...(extraction ? { extraction } : {}),
@@ -59,7 +59,7 @@ if (isMain) {
     console.log(`Podcast Studio listening on http://localhost:${port}  (UI at /, health at /health)`);
     console.log(`  KMOS backing: ${backing}${process.env.KMOS_ENFORCE === 'true' ? '  | attribution: ENFORCING' : ''}`);
     console.log(`  acquisition/ASR: ${endpoint ? endpoint : 'not configured (paste a transcript)'}`);
-    console.log(`  concept extraction: ${ollamaUrl ? `Ollama @ ${ollamaUrl}` : 'reference (offline; set OLLAMA_URL for richer concepts)'}`);
+    console.log(`  concept extraction: ${llmConfig.provider}${llmConfig.baseUrl ? ` @ ${llmConfig.baseUrl}` : ''}${llmConfig.model ? ` (${llmConfig.model})` : ''}`);
     console.log(`  recovered episodes: ${studio.listEpisodes().length}`);
   });
 }
