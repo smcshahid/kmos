@@ -1,6 +1,6 @@
 {
   "name": "@kmos/knowledge-studio",
-  "version": "1.0.0-pc.1",
+  "version": "1.0.0-pc.2",
   "private": true,
   "type": "module",
   "description": "Knowledge Studio (KMOS-0009): a THIN application that explores institutional knowledge by composing the Search and Knowledge platform services. Contains no business logic.",

@@ -1,6 +1,6 @@
 {
   "name": "@kmos/canonical-kernel",
-  "version": "1.0.0-pc.1",
+  "version": "1.0.0-pc.2",
   "private": true,
   "type": "module",
   "description": "KMOS canonical kernel: single source of truth for canonical objects, the event envelope, schemas, the in-process event bus, and replay. Derived strictly from KMOS-0100/0110/0130/0140 and catalogs KMOS-10030/10040. No service may redefine these.",
