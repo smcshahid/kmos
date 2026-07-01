@@ -1,6 +1,6 @@
 {
   "name": "@kmos/ai-collaboration",
-  "version": "1.0.0-pc.2",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "KMOS AI Collaboration domain service (KMOS-0008): registers AI workers as canonical (never anonymous) identities + capabilities, invokes them via the Capability Runtime, records every AI output as a non-authoritative AiContribution (a RECOMMENDATION), and routes human review/approval through the Governance Service. AI is a collaborator, never the system of record; humans govern.",

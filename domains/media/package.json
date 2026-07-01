@@ -1,6 +1,6 @@
 {
   "name": "@kmos/media",
-  "version": "1.0.0-pc.2",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "KMOS Media domain service: composes capabilities (transcription, rendering) via the Workflow + Runtime to process media into evidence + knowledge inputs. Holds no business logic of its own (it lives in capabilities).",

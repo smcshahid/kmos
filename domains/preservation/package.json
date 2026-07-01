@@ -1,6 +1,6 @@
 {
   "name": "@kmos/preservation",
-  "version": "1.0.0-pc.2",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "KMOS Preservation domain service (KMOS-0006 Asset Registry framework, KMOS-0009 Preservation Platform): orchestrates preservation by composing the Asset Registry \u2014 verifies integrity, generates reproducible evidence packages, and transitions assets toward the Preserved lifecycle. It holds no business logic beyond preservation orchestration.",

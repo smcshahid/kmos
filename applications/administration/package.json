@@ -1,6 +1,6 @@
 {
   "name": "@kmos/administration",
-  "version": "1.0.0-pc.2",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Administration (KMOS-0009): a THIN application that administers the institution by composing the Identity, Governance and Capability Registry platform services through their business APIs. Contains no business logic and owns no canonical objects or events.",
