@@ -18,14 +18,17 @@ image:
 # Studio gets its own event log, NOT shared with KMOS).
 databaseUrl: ""
 
-# ISOLATED-mode fallback (Olares-injected middleware). Placeholders for local render.
+# DEFAULT (recommended for the Olares upload flow): Olares-injected middleware — the
+# app gets its own Olares-managed PostgreSQL, exactly like the KMOS app does. Durable
+# across restarts. Placeholders below are for local `helm template` rendering only;
+# Olares overrides them at install from the OlaresManifest middleware declaration.
 postgres:
   host: postgres
   port: 5432
-  username: kmos
+  username: studio
   password: changeme
   databases:
-    kmos: kmos
+    studio: studio
 
 resources:
   requests:

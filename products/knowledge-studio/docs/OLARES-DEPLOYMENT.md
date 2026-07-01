@@ -28,42 +28,75 @@ Both apps are stateless compute; the durable event log in shared PostgreSQL is t
 institutional memory. Read models are per-pod projections rebuilt from the log on boot
 (run **one replica** of each — in-memory projections + per-source job cache are per-pod).
 
+## The flow (identical to how you installed KMOS)
+
+You do **not** build anything locally. It is the same three steps you used for KMOS:
+
+1. **GitHub Actions builds + pushes the image** to Docker Hub.
+2. **You download the packaged OAC `.tgz`.**
+3. **You upload the `.tgz`** on Olares via **Market → My Olares → Upload custom chart** —
+   Olares provisions PostgreSQL from the manifest and boots the app.
+
+> `docker build` is **only** a local self-check for engineers; it is **not** your install
+> path. Ignore it for deployment.
+
 ## Prerequisites
 
-1. Olares ≥ 1.11 with the **KMOS app installed** (provides the platform + PostgreSQL).
-2. A container image for Knowledge Studio, reachable by your cluster (see below).
-3. In-cluster connection details for the KMOS PostgreSQL (host, port, db, user, password).
+1. Olares ≥ 1.11 (the same node where KMOS runs).
+2. Repository secrets `DOCKERHUB_USERNAME` + `DOCKERHUB_TOKEN` already set (you added these
+   for the KMOS image — the Knowledge Studio workflow reuses them).
 
-## Step 1 — Build & publish the image
+## Step 1 — Build & publish the image (GitHub Actions, one click)
 
-The image is self-proving (runs lint + typecheck + fitness + full tests at build):
+Actions → **Release Knowledge Studio image** → **Run workflow** → tag `1.1.0`. The workflow
+(`.github/workflows/release-studio-image.yml`) builds `products/knowledge-studio/Dockerfile`
+(self-proving — it runs the full `npm run verify` at build) and pushes:
 
-```bash
-docker build -f products/knowledge-studio/Dockerfile -t <registry>/knowledge-studio:1.0.0 .
-docker push <registry>/knowledge-studio:1.0.0
+```
+docker.io/<your-dockerhub-username>/knowledge-studio:1.1.0
+docker.io/<your-dockerhub-username>/knowledge-studio:latest
 ```
 
-Set `image.repository`/`image.tag` in `deployment/olares/values.yaml` accordingly. (A CI
-workflow mirroring the KMOS `release-image` job can automate this — see ROADMAP.)
+(Or push a `studio-v1.1.0` git tag to trigger the same build.) Confirm the image appears in
+your Docker Hub. `values.yaml` already points at `malikshahid85/knowledge-studio:1.1.0` —
+adjust the namespace if yours differs.
 
-## Step 2 — Choose a database mode
+## Step 2 — Get the OAC `.tgz`
 
-- **Shared mode (recommended).** Point Knowledge Studio at the KMOS database so both apps
-  share one event log. Set `databaseUrl` to the in-cluster KMOS Postgres URL:
-  ```
-  helm ... --set databaseUrl="postgres://<user>:<pass>@<kmos-postgres-host>:5432/<kmos-db>"
-  ```
-  Processed knowledge is then visible to both apps (one shared institutional memory).
-- **Isolated mode.** Leave `databaseUrl` empty; the OlaresManifest `middleware.postgres`
-  declaration provisions a separate database (Knowledge Studio gets its own event log,
-  **not** shared with KMOS). Simpler, but not shared memory.
+A ready package is committed at
+[`deployment/package/knowledge-studio-1.1.0.tgz`](../deployment/package/knowledge-studio-1.1.0.tgz)
+— download it from the repo. To regenerate it after any chart change:
 
-## Step 3 — Install
+```bash
+bash scripts/package-studio-oac.sh   # → products/knowledge-studio/deployment/package/knowledge-studio-<version>.tgz
+```
 
-Package the Olares Application Chart (Chart.yaml + OlaresManifest.yaml + templates/) under
-`products/knowledge-studio/deployment/olares/` and install via **Olares Studio** (the
-recommended pre-submission path) or `helm`/`olares-cli` per your Olares version. Verify the
-`middleware.postgres` injected value keys against your Olares release's docs first.
+The tarball is a standard Olares Application Chart (top-level `knowledge-studio/` with
+`Chart.yaml`, `OlaresManifest.yaml`, `values.yaml`, `templates/`).
+
+## Step 3 — Install on Olares (upload the custom chart)
+
+**Market → My Olares → Upload custom chart** → upload `knowledge-studio-1.1.0.tgz` → install
+(exactly as you did for KMOS). On install Olares reads `OlaresManifest.yaml`, **provisions a
+PostgreSQL database** (the `middleware.postgres` declaration — user/db `studio`, `vectors`
+extension), injects the connection, and the app boots with a **durable event log + job
+state**. Reach it at the declared entrance (`knowledge-studio`, port `8090`, `authLevel:
+private`) — your host will look like `https://<id>.<your-olares-domain>`.
+
+> This is **isolated mode**: Knowledge Studio gets its own Olares-managed PostgreSQL — the
+> same shared-infrastructure pattern KMOS uses (Olares owns the Postgres process; the app
+> owns what's in it), and its knowledge is fully durable across restarts. It does **not**
+> literally share the KMOS app's database. If you want **one shared institutional memory**
+> across both apps, use *shared mode* (Advanced, below) — but isolated mode is the
+> recommended daily-driver install and needs nothing beyond the upload.
+
+### Advanced — shared-database mode (one memory with KMOS)
+
+Set `databaseUrl` (in `values.yaml` before packaging, or via your Olares chart values) to
+the in-cluster KMOS PostgreSQL URL so both apps read/write one event log:
+`postgres://<user>:<pass>@<kmos-postgres-host>:5432/<kmos-db>`. This is optional and
+requires knowing KMOS's in-cluster DB connection; skip it unless you specifically want
+cross-app shared knowledge.
 
 ## Step 4 — Verify the deployment (do not assume success)
 
