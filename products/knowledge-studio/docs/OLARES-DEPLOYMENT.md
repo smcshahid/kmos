@@ -90,6 +90,51 @@ private`) — your host will look like `https://<id>.<your-olares-domain>`.
 > across both apps, use *shared mode* (Advanced, below) — but isolated mode is the
 > recommended daily-driver install and needs nothing beyond the upload.
 
+## Frictionless YouTube (paste a URL → explore)
+
+By default YouTube needs a pasted transcript. To make a raw **YouTube URL** process end to
+end, enable the **caption/ASR sidecar** — a tiny yt-dlp + Whisper/Speaches companion that
+runs in the **same pod**, so Knowledge Studio reaches it at `localhost` (no cross-app
+networking). It uses your existing Olares **Speaches/Whisper** for audio it can't caption.
+
+**Step A — publish the caption image** (once): Actions → **Release caption service image**
+→ Run workflow → tag `1.0.0`. Pushes `docker.io/<your-ns>/knowledge-studio-caption:1.0.0`.
+
+**Step B — enable it at install** by setting these chart values before packaging (or via
+your Olares chart-values UI), then re-run `bash scripts/package-studio-oac.sh` and upload
+the new `.tgz`:
+
+```yaml
+captionService:
+  enabled: true
+  image: { repository: <your-ns>/knowledge-studio-caption, tag: "1.0.0" }
+  speachesUrl: "http://<your-speaches-host>:8000"   # your Olares Whisper/Speaches
+  asrModel: "Systran/faster-whisper-small"
+```
+
+Knowledge Studio then auto-sets `KS_CAPTION_ENDPOINT=http://localhost:8092`. Verify:
+the app boot log shows a caption endpoint; the caption sidecar's `/health` returns
+`{"status":"ok","asr":"configured"}`; pasting a YouTube URL now reaches *ready* with a real
+transcript. Captions-only (no Speaches) still works for videos that have captions — leave
+`speachesUrl` empty. Provider-independent: point `speachesUrl` at any OpenAI-audio-compatible
+ASR server. See [`../services/caption-service/README.md`](../services/caption-service/README.md).
+
+## Richer concepts (Ollama)
+
+The offline reference extractor is basic. Point Knowledge Studio at your Olares **Ollama**
+for LLM-backed concepts + real definitions — provider-independent, behind the KMOS
+capability contract, with automatic fallback to the reference extractor on any failure (so
+processing never breaks). Set at install:
+
+```yaml
+ollama:
+  url: "http://<your-ollama-host>:11434"   # empty → reference extractor
+  model: "llama3.1"
+```
+
+Verify: the app boot log shows `concept extraction: Ollama @ …`; process the sample and the
+concepts/definitions are noticeably richer. See [ADR-KS-0002](adr/ADR-KS-0002-language-domain-capability-injection.md).
+
 ### Advanced — shared-database mode (one memory with KMOS)
 
 Set `databaseUrl` (in `values.yaml` before packaging, or via your Olares chart values) to

@@ -24,7 +24,8 @@
     "@kmos/search": "*",
     "@kmos/platform-catalog": "*",
     "@kmos/media": "*",
-    "@kmos/language": "*"
+    "@kmos/language": "*",
+    "@kmos/reference-capabilities": "*"
   },
   "scripts": {
     "build": "tsc --build",

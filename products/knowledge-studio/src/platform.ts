@@ -20,6 +20,7 @@ import { CapabilityRuntimeService } from '@kmos/capability-runtime';
 import { SearchService } from '@kmos/search';
 import { MediaDomainService } from '@kmos/media';
 import { LanguageDomainService } from '@kmos/language';
+import type { ReferenceCapability } from '@kmos/reference-capabilities';
 
 export interface StudioPlatform {
   readonly bus: EventBus;
@@ -38,9 +39,12 @@ export interface StudioPlatform {
 export interface CreateStudioPlatformOptions {
   readonly enforce?: boolean;
   readonly authorizer?: Authorizer;
+  /** Optional provider-backed concept-extraction capability (e.g. Ollama). Defaults
+   * to the KMOS reference extractor. Provider-independent — see ADR-KS-0002. */
+  readonly extraction?: ReferenceCapability;
 }
 
-function wire(bus: EventBus): StudioPlatform {
+function wire(bus: EventBus, options: CreateStudioPlatformOptions): StudioPlatform {
   const identity = new IdentityService({ bus });
   const assets = new AssetRegistryService({ bus });
   const knowledge = new KnowledgeService({ bus });
@@ -50,7 +54,10 @@ function wire(bus: EventBus): StudioPlatform {
   const runtime = new CapabilityRuntimeService({ bus });
   const search = new SearchService({ bus });
   const media = new MediaDomainService({ bus, assets, registry, runtime });
-  const language = new LanguageDomainService({ bus, knowledge, registry, runtime });
+  const language = new LanguageDomainService({
+    bus, knowledge, registry, runtime,
+    ...(options.extraction ? { extraction: options.extraction } : {}),
+  });
   return { bus, identity, assets, knowledge, governance, events, registry, runtime, search, media, language };
 }
 
@@ -65,7 +72,7 @@ function makeBus(log: EventLog | undefined, options: CreateStudioPlatformOptions
 
 /** In-memory composition (dev/demo/tests). */
 export function createStudioPlatform(options: CreateStudioPlatformOptions = {}): StudioPlatform {
-  return wire(makeBus(undefined, options));
+  return wire(makeBus(undefined, options), options);
 }
 
 /**
@@ -82,7 +89,7 @@ export async function createStudioPlatformFromEnv(options: CreateStudioPlatformO
 
   const sql = new PgSqlClient(url);
   await sql.query(EVENTS_TABLE_DDL);
-  const platform = wire(makeBus(new PostgresEventLog(sql), options));
+  const platform = wire(makeBus(new PostgresEventLog(sql), options), options);
   await Promise.all([
     platform.knowledge.hydrate(),
     platform.assets.hydrate(),

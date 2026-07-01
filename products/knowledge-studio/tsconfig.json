@@ -13,7 +13,8 @@
     { "path": "../../platform/search" },
     { "path": "../../engines/platform-catalog" },
     { "path": "../../domains/media" },
-    { "path": "../../domains/language" }
+    { "path": "../../domains/language" },
+    { "path": "../../capabilities/reference-capabilities" }
   ],
   "include": ["src/**/*.ts"],
   "exclude": ["**/*.test.ts", "dist"]

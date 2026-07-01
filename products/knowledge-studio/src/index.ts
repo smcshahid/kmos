@@ -17,6 +17,7 @@ export * from './downloads.js';
 export * from './youtube.js';
 export * from './source-store.js';
 export * from './caption.js';
+export * from './ollama-extraction.js';
 export { SAMPLE_TITLE, SAMPLE_TRANSCRIPT } from './sample.js';
 
 import { PgSqlClient } from '@kmos/events';
@@ -24,6 +25,7 @@ import { createStudioPlatformFromEnv } from './platform.js';
 import { StudioService } from './studio.js';
 import { PostgresSourceStore } from './source-store.js';
 import { makeHttpCaptionFetcher } from './caption.js';
+import { createOllamaExtraction } from './ollama-extraction.js';
 import { createStudioServer } from './http.js';
 
 const isMain = import.meta.url === `file://${process.argv[1]}`
@@ -32,7 +34,17 @@ const isMain = import.meta.url === `file://${process.argv[1]}`
 if (isMain) {
   const port = Number(process.env.PORT ?? 8090);
   const url = process.env.KMOS_DATABASE_URL;
-  const platform = await createStudioPlatformFromEnv({ enforce: process.env.KMOS_ENFORCE === 'true' });
+  // Richer concepts: an Ollama-backed extraction capability when OLLAMA_URL is set
+  // (provider-independent, behind the KMOS contract; falls back to the reference
+  // extractor on any failure). See ADR-KS-0002.
+  const ollamaUrl = process.env.OLLAMA_URL;
+  const extraction = ollamaUrl
+    ? createOllamaExtraction({ url: ollamaUrl, ...(process.env.OLLAMA_MODEL ? { model: process.env.OLLAMA_MODEL } : {}) })
+    : undefined;
+  const platform = await createStudioPlatformFromEnv({
+    enforce: process.env.KMOS_ENFORCE === 'true',
+    ...(extraction ? { extraction } : {}),
+  });
   // Durable job-state uses the SAME shared PostgreSQL (no duplicate services); with no
   // database it stays in-memory. Recovery on boot restores the full source experience.
   const store = url ? new PostgresSourceStore(new PgSqlClient(url)) : undefined;
@@ -51,6 +63,7 @@ if (isMain) {
     console.log(`Knowledge Studio listening on http://localhost:${port}  (UI at /, health at /health)`);
     console.log(`  KMOS backing: ${backing}${process.env.KMOS_ENFORCE === 'true' ? '  | attribution: ENFORCING' : ''}`);
     console.log(`  caption/ASR capability: ${captionEndpoint ? captionEndpoint : 'not configured (YouTube needs a pasted transcript)'}`);
+    console.log(`  concept extraction: ${ollamaUrl ? `Ollama @ ${ollamaUrl}` : 'reference (offline; set OLLAMA_URL for richer concepts)'}`);
     console.log(`  recovered sources: ${studio.listSources().length}`);
   });
 }

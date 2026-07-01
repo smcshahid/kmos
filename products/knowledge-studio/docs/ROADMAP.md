@@ -23,13 +23,15 @@ lint/fitness-clean, reviewed.
 - ✅ **Olares packaging** — companion app sharing the KMOS PostgreSQL (shared/isolated
   modes); self-proving image.
 
-## V1.2 — Frictionless YouTube & richer knowledge (next)
+## V1.2 — Frictionless YouTube & richer knowledge (shipping)
 
-- **Real AI capabilities wired on Olares.** Whisper/Speaches ASR behind the caption seam;
-  **Ollama/hosted-LLM extraction** for materially richer concepts + definitions; real
-  translation. Provider-independent, behind contracts.
-- **Language-domain capability injection** (with an ADR) — a small, backward-compatible
-  seam so the app can select a production extraction/translation capability without a fork.
+- ✅ **Frictionless YouTube** — caption/ASR sidecar (yt-dlp + Whisper/Speaches) behind the
+  `KS_CAPTION_ENDPOINT` seam; a raw YouTube URL processes end-to-end.
+- ✅ **Ollama/LLM extraction** for materially richer concepts + definitions, provider-
+  independent behind the KMOS contract, with graceful fallback.
+- ✅ **Language-domain capability injection** (ADR-KS-0002) — backward-compatible seam so
+  the app selects a production extraction capability without a fork.
+- **Real translation** capability (replace the reference translator) — same injection pattern.
 - **Cross-source library** — unified search + relationships across lectures; a "recently
   learned" home.
 - **Accessibility pass** — drawer focus-trap/return-focus; published a11y statement.
