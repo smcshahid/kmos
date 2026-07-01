@@ -17,6 +17,7 @@ import type {
   CapabilityDescriptor, CapabilityHandler, ExtractionInput, ExtractionOutput, ReferenceCapability,
 } from '@kmos/reference-capabilities';
 import { knowledgeExtraction, withFallback } from '@kmos/reference-capabilities';
+import { CONCEPT_SYSTEM_PROMPT, parseConcepts, boundText } from './llm-core.js';
 
 export interface OllamaExtractionOptions {
   /** Ollama base URL, e.g. http://ollama:11434 */
@@ -41,12 +42,6 @@ const descriptor: CapabilityDescriptor = {
     consumedEvents: ['TranscriptCorrected'], publishedEvents: ['KnowledgeExtracted'],
   },
 };
-
-const SYSTEM_PROMPT =
-  'You extract the key concepts a learner should understand from a lecture transcript. '
-  + 'Return STRICT JSON of the form {"concepts":[{"canonicalName":"...","definition":"..."}]}. '
-  + 'canonicalName is 1-4 words (a real term from the text). definition is one sentence, '
-  + 'grounded in the transcript, no more than 25 words. Do not invent facts not in the text.';
 
 /**
  * Build the Ollama knowledge-extraction capability. The returned `create()` composes
@@ -73,19 +68,14 @@ export function createOllamaExtraction(
         body: JSON.stringify({
           model, stream: false, format: 'json', options: { temperature: 0.1 },
           messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: text.slice(0, 24_000) },
+            { role: 'system', content: CONCEPT_SYSTEM_PROMPT },
+            { role: 'user', content: boundText(text) },
           ],
         }),
       });
       if (!res.ok) return [];
       const body = (await res.json()) as { message?: { content?: string } };
-      const content = body.message?.content ?? '';
-      const parsed = JSON.parse(content) as { concepts?: Array<{ canonicalName?: unknown; definition?: unknown }> };
-      return (parsed.concepts ?? [])
-        .map((c) => ({ canonicalName: String(c.canonicalName ?? '').trim(), definition: String(c.definition ?? '').trim() }))
-        .filter((c) => c.canonicalName.length > 0)
-        .slice(0, maxConcepts);
+      return parseConcepts(body.message?.content ?? '', maxConcepts);
     } finally {
       clearTimeout(timer);
     }

@@ -6,4 +6,7 @@
  * justified it in documentation/CAPABILITY-EVOLUTION-ROADMAP.md §3.
  */
 export * from './knowledge-extraction/ollama.js';
+export * from './knowledge-extraction/openai-compatible.js';
+export * from './knowledge-extraction/config.js';
+export * from './knowledge-extraction/llm-core.js';
 export * from './transcription/http.js';
