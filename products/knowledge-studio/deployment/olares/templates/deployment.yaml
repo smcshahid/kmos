@@ -31,7 +31,7 @@ spec:
             # back to the Olares-injected postgres.* (ISOLATED mode). Verify the exact
             # injected keys against your Olares version.
             - name: KMOS_DATABASE_URL
-              value: {{ .Values.databaseUrl | default (printf "postgres://%s:%s@%s:%v/%s" .Values.postgres.username .Values.postgres.password .Values.postgres.host .Values.postgres.port .Values.postgres.databases.kmos) | quote }}
+              value: {{ .Values.databaseUrl | default (printf "postgres://%s:%s@%s:%v/%s" .Values.postgres.username .Values.postgres.password .Values.postgres.host .Values.postgres.port .Values.postgres.databases.studio) | quote }}
             - name: KMOS_ENFORCE
               value: "{{ .Values.enforce }}"
           livenessProbe:

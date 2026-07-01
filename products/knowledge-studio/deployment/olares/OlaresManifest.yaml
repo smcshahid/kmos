@@ -56,9 +56,9 @@ spec:
 # this block if you want an isolated instance; omit/override databaseUrl for sharing.
 middleware:
   postgres:
-    username: kmos
+    username: studio
     databases:
-      - name: kmos
+      - name: studio
         extensions:
           - vectors
 
