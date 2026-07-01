@@ -15,9 +15,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { CanonicalId } from '@kmos/canonical-kernel';
 import type { PodcastPlatform } from './platform.js';
-import { parseTranscript, segmentsToText, totalDuration } from './transcript.js';
-import { detectChapters } from './chapters.js';
-import { findEvidence } from './evidence.js';
+import { parseTranscript, segmentsToText, totalDuration, detectChapters, findEvidence } from '@kmos/content-projections';
 import { resolveSource, type TranscriptFetcher } from './acquisition.js';
 import { toSrt, toVtt } from './subtitles.js';
 import { chapterClips, highlightReel, type HighlightSpan } from './clips.js';

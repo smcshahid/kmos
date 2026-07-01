@@ -8,7 +8,7 @@
  */
 
 import type { ConceptView, Source } from './types.js';
-import { formatTimecode } from './transcript.js';
+import { formatTimecode } from '@kmos/content-projections';
 
 /** Plain, timecoded transcript. */
 export function renderTranscriptText(source: Source): string {

@@ -11,7 +11,7 @@
  */
 
 import type { ConceptView, Episode } from './types.js';
-import { formatTimecode } from './transcript.js';
+import { formatTimecode } from '@kmos/content-projections';
 
 export interface PackageFile {
   readonly name: string;

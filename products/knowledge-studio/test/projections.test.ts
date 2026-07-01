@@ -1,8 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseTranscript } from '../src/transcript.ts';
-import { detectChapters } from '../src/chapters.ts';
-import { findEvidence } from '../src/evidence.ts';
+import { parseTranscript, detectChapters, findEvidence } from '@kmos/content-projections';
 import { parseVideoId, resolveYouTube } from '../src/youtube.ts';
 
 const TX = [

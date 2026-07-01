@@ -16,6 +16,7 @@
     "@kmos/canonical-kernel": "*",
     "@kmos/sdk": "*",
     "@kmos/providers": "*",
+    "@kmos/content-projections": "*",
     "@kmos/media": "*",
     "@kmos/language": "*",
     "@kmos/reference-capabilities": "*"

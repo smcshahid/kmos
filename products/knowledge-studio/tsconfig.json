@@ -6,6 +6,7 @@
     { "path": "../../platform/events" },
     { "path": "../../sdk/sdk" },
     { "path": "../../capabilities/providers" },
+    { "path": "../../capabilities/content-projections" },
     { "path": "../../capabilities/reference-capabilities" },
     { "path": "../../domains/media" },
     { "path": "../../domains/language" }

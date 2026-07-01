@@ -1,16 +1,14 @@
 /**
- * Chapter detection (pure projection — no KMOS, no side effects).
+ * Chapter detection (pure projection — no side effects).
  *
- * Groups timestamped segments into a small, readable outline. Deterministic and
- * honest: these are AUTO chapters, refinable by the user (manual chapters are a
- * product feature layered on top). We prefer natural breaks (longer pauses between
- * segments) and fall back to even distribution so any source yields a usable outline.
+ * Groups timestamped segments into a small, readable outline. Deterministic and honest:
+ * these are AUTO chapters. Prefers natural breaks (longer pauses) and falls back to even
+ * distribution so any source yields a usable outline.
  */
 
 import type { Chapter, TranscriptSegment } from './types.js';
 
 interface ChapterOptions {
-  /** Desired approximate seconds per chapter (guides how many chapters to make). */
   readonly targetSecondsPerChapter?: number;
   readonly minChapters?: number;
   readonly maxChapters?: number;
@@ -43,8 +41,6 @@ export function detectChapters(segments: readonly TranscriptSegment[], opts: Cha
   return chapters;
 }
 
-/** Choose `count` segment indices to start chapters at. Prefer the largest inter-
- * segment gaps (topic pauses); always include index 0; enforce spacing. */
 function pickBoundaries(segments: readonly TranscriptSegment[], count: number): number[] {
   if (count <= 1) return [0];
   const gaps: { index: number; gap: number }[] = [];
@@ -61,7 +57,6 @@ function pickBoundaries(segments: readonly TranscriptSegment[], count: number): 
       if ([...chosen].every((c) => Math.abs(c - g.index) >= minSpacing)) chosen.add(g.index);
     }
   }
-  // Fill remaining boundaries by even distribution (covers estimated-timing prose).
   if (chosen.size < count) {
     const step = segments.length / count;
     for (let i = 1; i < count; i++) chosen.add(Math.round(i * step));
@@ -69,10 +64,8 @@ function pickBoundaries(segments: readonly TranscriptSegment[], count: number): 
   return [...chosen].sort((a, b) => a - b).slice(0, count);
 }
 
-/** A short, human title from the opening of a chapter's first segment. */
 function titleFor(segments: readonly TranscriptSegment[], startIndex: number): string {
   const raw = segments[startIndex]!.text.replace(/\s+/g, ' ').trim();
-  // Take up to the first clause boundary, capped in length.
   const clause = raw.split(/[,.;:—]/)[0]!.trim();
   const words = clause.split(' ').slice(0, 9).join(' ');
   const title = words.length > 60 ? `${words.slice(0, 57).trim()}…` : words;

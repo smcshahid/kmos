@@ -12,9 +12,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { CanonicalId } from '@kmos/canonical-kernel';
 import type { StudioPlatform } from './platform.js';
-import { parseTranscript, segmentsToText, totalDuration } from './transcript.js';
-import { detectChapters } from './chapters.js';
-import { findEvidence } from './evidence.js';
+import { parseTranscript, segmentsToText, totalDuration, detectChapters, findEvidence } from '@kmos/content-projections';
 import { resolveYouTube } from './youtube.js';
 import { type SourceStore, trustSubset } from './source-store.js';
 import type {

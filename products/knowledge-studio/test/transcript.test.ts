@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseTranscript, parseTimecode, formatTimecode, splitSentences, totalDuration,
-} from '../src/transcript.ts';
+} from '@kmos/content-projections';
 
 test('parseTimecode handles mm:ss and hh:mm:ss', () => {
   assert.equal(parseTimecode('12:34'), 754);

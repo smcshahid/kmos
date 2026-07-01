@@ -17,6 +17,7 @@
     { "path": "engines/observability" },
     { "path": "capabilities/reference-capabilities" },
     { "path": "capabilities/providers" },
+    { "path": "capabilities/content-projections" },
     { "path": "sdk/sdk" },
     { "path": "domains/media" },
     { "path": "domains/language" },
