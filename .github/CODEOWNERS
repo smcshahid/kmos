@@ -1,0 +1,26 @@
+# KMOS code ownership & PROTECTED ASSETS (Architecture Freeze v1.0 — ADR-0012).
+#
+# The canonical kernel, the constitution, and the canonical catalogs are PROTECTED:
+# changes require the KMOS-9999 §20 kernel-migration review and owner approval.
+# GitHub requests review from the owners below on any PR touching these paths.
+# (Enable "Require review from Code Owners" in branch protection to enforce.)
+
+# Default owner for everything.
+*                               @smcshahid
+
+# PROTECTED — the canonical kernel (the most-frozen artifact). Do not expand
+# speculatively; future flexibility comes from adapters/capabilities/services/
+# SDKs/extensions/applications, never from kernel growth (ADR-0012).
+/packages/canonical-kernel/     @smcshahid
+
+# PROTECTED — the constitution + canonical reference catalogs (the architectural law).
+/constitution/                  @smcshahid
+/reference/                     @smcshahid
+
+# PROTECTED — the permanent v1 record (frozen; append-only).
+/documentation/adr/             @smcshahid
+/engineering/review/            @smcshahid
+
+# PROTECTED — architecture-fitness gates + release/CI automation.
+/tools/fitness-checks/          @smcshahid
+/.github/workflows/             @smcshahid
