@@ -15,6 +15,25 @@ are asserted. Architecture Decision Records are under
 
 ---
 
+## [1.0.0-pc.1] — 2026-07-01 (Production Candidate; validated on Olares)
+
+### Added / Validated
+- **Deployed and validated on a real Olares instance** (ADR-0010,
+  `engineering/review/18`): installed via the Olares Application Chart
+  (`deployment/olares/`), Olares provisioned PostgreSQL, the full workflow ran
+  end-to-end, and the **durable event log survived an app restart** (77→79
+  events). Public image on Docker Hub via `release-image.yml`.
+- **Server honours `KMOS_DATABASE_URL`** (`createPlatformFromEnv`): a
+  PostgreSQL-backed durable event log with search rebuild on boot; in-memory
+  otherwise.
+- CRIT-2 pervasive attribution (ambient `CallContext`); `EnvSecretResolver`;
+  `.dockerignore`; supply-chain audit gate; version → `1.0.0-pc.1`.
+
+### Known limitation
+- Read-model (object-detail) recovery on boot is not yet implemented, so a restart
+  recovers the event log + search but not `GET /:id` detail → **`replicas: 1`**.
+  This is the top remaining pre-GA item (`engineering/review/18` §5–§6).
+
 ## [Unreleased]
 
 Work staged for GA (the v1.0.0 final cut) — see

@@ -18,16 +18,22 @@ developers choosing a run model._
 
 ## 0. Honesty banner (read first)
 
-> Exactly **one** run model has been executed and validated in the KMOS
-> engineering environment: **docker-compose against a real PostgreSQL** (the event
-> log survived a restart; search rebuilt from the log — see
-> [`OLARES-DEPLOYMENT-GUIDE.md`](OLARES-DEPLOYMENT-GUIDE.md) §8). The image itself is
-> **verified to build and self-verify** (`npm run verify` runs at build time,
-> `Dockerfile`). Every other model — raw Docker, raw Kubernetes, Helm, and the
-> Olares Application Chart — is **PREPARED, NOT VALIDATED**: authored from the
-> repository sources and reviewable/renderable, but not exercised against a live
-> cluster or Olares node here. Status is stated per row below; never read "prepared"
-> as "proven."
+> **Two** run models have now been exercised against real infrastructure:
+> **docker-compose against a real PostgreSQL** in the engineering environment (the
+> event log survived a restart; search rebuilt from the log), and the **Olares
+> Application Chart on a real Olares instance** — the owner installed KMOS on their
+> own Olares node ("mwayolares", 2026-06-30/07-01), Olares provisioned Postgres and
+> KMOS booted durable, the full end-to-end workflow ran, and event-log durability
+> survived an app restart on-node (77 → 79 events). See
+> [`OLARES-DEPLOYMENT-GUIDE.md`](OLARES-DEPLOYMENT-GUIDE.md) §8. That Olares run was
+> **verified by the owner operating their own Olares** (screenshot + event counts),
+> not proven by an automated test. The image itself is **verified to build and
+> self-verify** (`npm run verify` runs at build time, `Dockerfile`) and its published
+> form (`docker.io/malikshahid85/kmos:1.0.0-pc.1`) was independently verified pullable
+> and boots `/health`. The remaining models — raw Docker, raw Kubernetes, and Helm —
+> are still **PREPARED, NOT VALIDATED**: authored from the repository sources and
+> reviewable/renderable, but not exercised against a live cluster here. Status is
+> stated per row below; never read "prepared" as "proven."
 
 Two invariants apply to **every** model (from `platform.ts` and
 `DEPLOYMENT-TARGETS.md`):
@@ -50,7 +56,7 @@ Two invariants apply to **every** model (from `platform.ts` and
 | **Raw Docker** | `Dockerfile` | Run the single container anywhere Docker runs; bring your own Postgres | Image **verified** to build/run; standalone `docker run` wiring **prepared** |
 | **Raw Kubernetes manifests** | `deployment/kubernetes/` | Cluster deploy with plain `kubectl apply`, no Helm | **Prepared, not validated** |
 | **Helm chart** | `deployment/helm/` | Templated, values-driven cluster deploy | **Prepared, not validated** (`helm template` renders offline) |
-| **Olares Application Chart (OAC)** | `deployment/olares/` | Run KMOS as an Olares app, consuming Olares Postgres middleware | **Prepared, not validated on Olares**; underlying container **verified** (§0) |
+| **Olares Application Chart (OAC)** | `deployment/olares/` | Run KMOS as an Olares app, consuming Olares Postgres middleware | **VALIDATED on real Olares** — install accepted, durable Postgres persistence, restart-survival (77 → 79) on-node (§0); underlying container also verified |
 
 ---
 
@@ -61,12 +67,12 @@ Two invariants apply to **every** model (from `platform.ts` and
 | **Use case** | Inner-loop dev, debugging | Local full stack / demo / container validation | Single-host container, CI, quick prod-ish run | Cluster deploy without Helm | Cluster deploy, values-driven, repeatable | Self-hosted personal-cloud app, middleware provided by Olares |
 | **Operational complexity** | Lowest (Node + optional Postgres) | Low (one `compose up`) | Low–medium (you wire Postgres + secrets) | Medium–high (author/apply many manifests) | Medium (values + release lifecycle) | Medium; **Olares provisions Postgres for you** (declared middleware) |
 | **Upgrade path** | `git pull` / restart | `compose up --build` (recreate) | Repull image, recreate container | `kubectl apply` (recreate at replicas:1) | `helm upgrade` (recreate at replicas:1) | Olares app update → **recreate at replicas:1** (rolling not yet safe, §0) |
-| **Production suitability** | No (dev only) | No (local/dev) | Limited (single host, no orchestration) | Yes, on your cluster (replicas:1) | Yes, on your cluster (replicas:1) | Yes, on **your Olares** (replicas:1) — after you validate on-node |
+| **Production suitability** | No (dev only) | No (local/dev) | Limited (single host, no orchestration) | Yes, on your cluster (replicas:1) | Yes, on your cluster (replicas:1) | Yes, on **your Olares** (replicas:1) — validated on-node (§0); confirm node-specific values on yours |
 | **Developer experience** | Best — instant reload, host tooling | Very good — realistic + one command | Good — portable, minimal | Verbose — manual manifests | Good — parameterized, reviewable via `helm template` | Good — app-store-style lifecycle; middleware handled by Olares |
 | **Maintainability** | N/A (not deployed) | Good for local | Manual — you own all wiring | Higher upkeep (drift across manifests) | Good — single source of values | Good — OAC bundles chart + manifest; tracks KMOS release |
 | **Postgres** | Optional (`docker-compose.dev.yml` or none) | Bundled (`pgvector/pg16`) | Bring your own | External (Secret) | External (Secret/values) | **Consumed from Olares** middleware (`vectors` ext) |
 | **Secrets** | Shell env | Compose env | `-e` / `--env-file` | K8s Secret → `KMOS_SECRET_*` | Secret/values → `KMOS_SECRET_*` | Olares env/secret → `KMOS_SECRET_*` |
-| **Status** | Verified | **VERIFIED** | Image verified; wiring prepared | Prepared, not validated | Prepared, not validated | Prepared on Olares; container verified |
+| **Status** | Verified | **VERIFIED** | Image verified; wiring prepared | Prepared, not validated | Prepared, not validated | **VALIDATED on real Olares** (install + durable persistence + restart-survival); container also verified |
 
 > All non-secret facts above trace to source: port **8080**, `GET /health`,
 > `GET /metrics`, `KMOS_DATABASE_URL`, and the `KMOS_SECRET_` mapping are in
@@ -104,12 +110,17 @@ Olares-native packaging model (Helm chart + `OlaresManifest.yaml`), it lets Olar
 the app entrance/permissions Olares expects, and it already pins the required
 `replicas: 1`. Full procedure: [`OLARES-DEPLOYMENT-GUIDE.md`](OLARES-DEPLOYMENT-GUIDE.md).
 
-> **Status:** the OAC is **prepared, not validated on a real Olares instance.** The
-> *container it deploys* is validated against real PostgreSQL via docker-compose
-> (event log durable across restart, §0). Validate the OAC on your node — ideally
-> via **Olares Studio** — before treating it as production. Confirm the injected
-> `.Values.postgres.*` key names match your Olares version
-> ([`OLARES-DEPLOYMENT-GUIDE.md`](OLARES-DEPLOYMENT-GUIDE.md) §4.1).
+> **Status:** the OAC is **VALIDATED on a real Olares instance** — the owner
+> installed it on their Olares node ("mwayolares"), Olares provisioned Postgres and
+> KMOS booted durable, the full end-to-end workflow ran, and event-log durability
+> survived an app restart (77 → 79 events) on-node (§0;
+> [`OLARES-DEPLOYMENT-GUIDE.md`](OLARES-DEPLOYMENT-GUIDE.md) §8.1). Still confirm the
+> injected `.Values.postgres.*` key names and the entrance host on **your** Olares
+> version ([`OLARES-DEPLOYMENT-GUIDE.md`](OLARES-DEPLOYMENT-GUIDE.md) §4.1). Note the
+> open items that this run did **not** close: read-model *detail* recovery on boot is
+> still roadmap (so `replicas` stays at 1), the identity → `CallContext` bridge is not
+> wired (KMOS runs non-enforcing on Olares), and a rehearsed `pg_dump` backup/restore
+> drill on the Olares Postgres is still pending.
 
 ### When to prefer something else instead of the OAC
 

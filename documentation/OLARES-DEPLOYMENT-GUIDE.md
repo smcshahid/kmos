@@ -9,9 +9,10 @@ _Grounded in the repository: the Olares Application Chart
 `templates/deployment.yaml`, `templates/service.yaml`), the env-driven composition
 root (`applications/api-server/src/platform.ts` — `createPlatformFromEnv`), the
 server (`applications/api-server/src/server.ts`, `index.ts`), the container build
-(`Dockerfile`), and the container-level validation performed against
-`docker-compose.yml`. Olares packaging facts are from docs.olares.com (Developer →
-Package)._
+(`Dockerfile`), the container-level validation performed against
+`docker-compose.yml`, and a **verified run on a real Olares instance** ("mwayolares",
+2026-06-30/07-01) reported by the owner. Olares packaging facts are from
+docs.olares.com (Developer → Package)._
 
 _Last updated: 2026-06-30 · Audience: platform operators, release engineers,
 Olares node administrators._
@@ -28,19 +29,33 @@ Companion docs: [`DEPLOYMENT-DECISION-GUIDE.md`](DEPLOYMENT-DECISION-GUIDE.md)
 
 ## 0. Honesty banner (read first)
 
-> **KMOS has NOT been deployed or validated on a real Olares instance.** No
-> Olares node, `olares-cli`, or Helm was available in the KMOS engineering
-> environment. The Olares Application Chart under `deployment/olares/` was
-> **authored from the OlaresManifest specification and the Helm chart model** and
-> is **PREPARED, NOT VALIDATED**.
+> **KMOS has been VERIFIED running on a real Olares instance.** On 2026-06-30/07-01
+> the owner installed KMOS on their own Olares node ("mwayolares") via the Olares
+> Application Chart under `deployment/olares/` (packaged as a `.tgz` and uploaded
+> through **Market → My Olares → Upload custom chart**). Olares **accepted** the
+> `OlaresManifest.yaml` + chart, **provisioned PostgreSQL** (the
+> `middleware.postgres` declaration) and injected the connection, and KMOS **booted
+> with a durable event log**. The app came up live at an Olares entrance URL
+> (`https://<id>.mwayolares.olares.com`, header showing "platform healthy"), the
+> full end-to-end workflow ran on-node, and **event-log durability survived an app
+> restart** on Olares (see [§8, Verification](#8-verification)). This was **verified
+> by the owner operating their own Olares** and reporting the observations
+> (screenshot + event counts) — not proven by an automated test.
 >
-> What **was** validated is the **container** — the same image the chart deploys —
-> running against a real PostgreSQL via `docker compose`, including durability of
-> the canonical event log across a restart (see [§8, Verification](#8-verification-the-transferable-evidence)).
-> That container-level evidence transfers to Olares because Olares runs the same
-> OCI image; the **placement** around it (middleware injection, entrances,
-> identity, monitoring) is Olares-version- and node-specific and is marked
-> **[verify on your Olares]** throughout.
+> The **container** — the same image the chart deploys — was independently validated
+> against a real PostgreSQL via `docker compose`, including durability of the
+> canonical event log across a restart; that evidence remains and complements the
+> on-Olares run.
+>
+> **Still open (the Olares run did NOT close these — they remain roadmap):** full
+> **read-model recovery on boot** (the event log and search index recover after a
+> restart, but repository-backed object *detail* — `GET /knowledge/:id` — is **not**
+> re-projected from the log; this is why `replicas` MUST stay at **1**, §1.4); the
+> Olares **identity → KMOS `CallContext`** attribution bridge (KMOS runs
+> **non-enforcing** on Olares today); a **distributed tracing** backend; a rehearsed
+> **`pg_dump` backup + restore drill** on the Olares Postgres; and a repository
+> **LICENSE** (owner decision). Node-version-specific placement details are still
+> marked **[verify on your Olares]** throughout.
 
 ---
 
@@ -68,11 +83,11 @@ underneath it.
   the canonical write endpoints (`applications/api-server/src/server.ts`).
 - **Attribution enforcement (CRIT-2)** — toggled by `KMOS_ENFORCE`.
 
-### 1.2 KMOS CONSUMES from Olares (today — validated at the container level)
+### 1.2 KMOS CONSUMES from Olares (today — VERIFIED on a real Olares instance)
 
 | Olares middleware | KMOS use | Wiring | Status |
 |---|---|---|---|
-| **PostgreSQL** (with the `vectors`/pgvector extension) | Durable backing for the **canonical event log** (system of record) via `KMOS_DATABASE_URL` | `OlaresManifest.yaml` `middleware.postgres` → Olares injects `.Values.postgres.*` → `templates/deployment.yaml` builds `KMOS_DATABASE_URL` | Chart **prepared, not validated on Olares**; the *Postgres backing itself* is **validated at the container level** against `pgvector/pgvector:pg16` (§8) |
+| **PostgreSQL** (with the `vectors`/pgvector extension) | Durable backing for the **canonical event log** (system of record) via `KMOS_DATABASE_URL` | `OlaresManifest.yaml` `middleware.postgres` → Olares injects `.Values.postgres.*` → `templates/deployment.yaml` builds `KMOS_DATABASE_URL` | **VERIFIED on real Olares** — Olares provisioned Postgres from the `middleware.postgres` declaration, injected the connection, and KMOS booted durable; event-log durability survived an app restart on-node (§8). Also independently validated at the container level against `pgvector/pgvector:pg16` (§8) |
 
 KMOS bundles **no database of its own** on Olares. The manifest *declares* the
 Postgres middleware and *consumes* the connection details Olares injects — matching
@@ -126,7 +141,7 @@ tracked **read-model-persistence** roadmap item
 |---|---|---|
 | A running Olares node/cluster you administer | Olares `>= 1.11.0-0` (declared in `OlaresManifest.yaml` `options.dependencies`) | **[verify on your Olares]** |
 | Olares **PostgreSQL** middleware available | With the `vectors` (pgvector-equivalent) extension | **[verify on your Olares]** |
-| A published KMOS **image** reachable by your node | Built from this repo's `Dockerfile`; CMD is `npm run serve`, `EXPOSE 8080`, ~431 MB (`node:22-bookworm-slim`). Set `image.repository`/`image.tag` in `values.yaml` | Image **builds and self-verifies** (`npm run verify` runs at build time) — verified |
+| A published KMOS **image** reachable by your node | Built from this repo's `Dockerfile`; CMD is `npm run serve`, `EXPOSE 8080`, ~431 MB (`node:22-bookworm-slim`). Set `image.repository`/`image.tag` in `values.yaml`. Published image: `docker.io/malikshahid85/kmos:1.0.0-pc.1` (public Docker Hub, built + pushed by `.github/workflows/release-image.yml`) | Image **builds and self-verifies** (`npm run verify` runs at build time); the published image was **independently verified pullable and boots `/health`**, and is the image the on-Olares run deployed — verified |
 | **Olares Studio** for pre-submission testing | Olares' recommended step: test the app in a real Olares environment via Studio before submission | **[verify on your Olares]** |
 | Architectures | `amd64`, `arm64` (`OlaresManifest.yaml` `spec.supportArch`) | Declared; **[verify on your Olares]** |
 
@@ -167,24 +182,31 @@ Review that the rendered Deployment has `replicas: 1`, `containerPort: 8080`,
 `/health` liveness/readiness probes, and a `KMOS_DATABASE_URL` built from the
 `postgres.*` values.
 
-### 3.2 Install on Olares — [verify on your Olares]
+### 3.2 Install on Olares — VERIFIED path (owner ran this on "mwayolares")
 
-The concrete install path (upload/side-load the OAC, or install from a store) is
-**Olares-version-specific and was not executed here**. The Olares-recommended flow
-is:
+The install path below was **executed by the owner on a real Olares instance**
+("mwayolares", 2026-06-30/07-01). The exact upload UI and injected key names remain
+Olares-version-specific, so per-node details are still marked **[verify on your
+Olares]**.
 
 1. **Publish the KMOS image** to a registry your Olares node can pull, and set
-   `image.repository` / `image.tag` in `values.yaml` accordingly.
-2. **Test in Olares Studio** — Olares' recommended pre-submission step: install and
-   exercise the app in a real Olares environment. This is where the middleware
-   injection (`.Values.postgres.*`), the entrance, and the permissions are actually
-   proven. **[verify on your Olares]**
-3. **Install the app.** On install, Olares reads `OlaresManifest.yaml`, provisions
-   the declared `postgres` middleware (creating the `kmos` database/user with the
-   `vectors` extension), injects the connection values, and renders + applies the
-   Helm templates. **[verify on your Olares]**
+   `image.repository` / `image.tag` in `values.yaml` accordingly. The verified run
+   used `docker.io/malikshahid85/kmos:1.0.0-pc.1` (public Docker Hub).
+2. **Package the OAC and upload it as a custom chart.** In the verified run the OAC
+   (`deployment/olares/`) was packaged as a **`.tgz`** and uploaded via **Market →
+   My Olares → Upload custom chart**. Olares **accepted** the `OlaresManifest.yaml`
+   + chart. (Olares Studio remains a valid alternative pre-submission path —
+   **[verify on your Olares]**.)
+3. **Install the app.** On install, Olares read `OlaresManifest.yaml`, **provisioned
+   the declared `postgres` middleware** (the `kmos` database/user with the `vectors`
+   extension), **injected the connection values**, and rendered + applied the Helm
+   templates — KMOS **booted with a durable event log** (verified, §8). The exact
+   injected key names are still version-specific — **[verify on your Olares]**.
 4. **Reach KMOS** through the declared entrance (`OlaresManifest.yaml` `entrances`:
-   name `kmos`, port `8080`, `authLevel: private`). **[verify on your Olares]**
+   name `kmos`, port `8080`, `authLevel: private`). In the verified run the app was
+   live at an Olares entrance URL (`https://<id>.mwayolares.olares.com`) with the
+   header showing **"platform healthy"**. Your entrance host will differ —
+   **[verify on your Olares]**.
 
 > On first boot the server logs `event log: PostgreSQL (durable event log)` when
 > `KMOS_DATABASE_URL` is set (`index.ts`). If it logs `in-memory`, the middleware
@@ -336,14 +358,44 @@ reconstructs the full institution (§6.2).
 
 ---
 
-## 8. Verification — the transferable evidence
+## 8. Verification
 
-This is the concrete, reproducible evidence that the KMOS container correctly
-persists the canonical event log against a real PostgreSQL. **It was executed at the
-container level via `docker compose`, NOT on Olares.** Olares runs the same image,
-so this transfers; the Olares placement still needs verification on your node (§3).
+This section has **two independent bodies of evidence**: the **on-Olares run** (§8.1,
+the owner exercising KMOS on their real Olares node) and the **container-level run**
+(§8.2, `docker compose` against real PostgreSQL). They corroborate the same
+load-bearing property — a durable event log that survives a restart and rebuilds its
+search projection by replay.
 
-### 8.1 What was validated (container level, against real pgvector/pg16)
+### 8.1 What was VERIFIED on a real Olares instance ("mwayolares", 2026-06-30/07-01)
+
+Verified by the **owner operating their own Olares** and reporting the observations
+(screenshot + event counts) — this was a personally observed run, **not** an
+automated test:
+
+- **Install accepted.** The OAC (`deployment/olares/`, packaged as a `.tgz` and
+  uploaded via Market → My Olares → Upload custom chart) was accepted; Olares
+  **provisioned PostgreSQL** from the `middleware.postgres` declaration and injected
+  the connection, and KMOS **booted with a durable event log**.
+- **Live entrance.** The app was reachable at an Olares entrance URL
+  (`https://<id>.mwayolares.olares.com`); the header showed **"platform healthy"**.
+- **Full end-to-end workflow ran on-node:** created an organization + identity (real
+  `kmos:` IDs); imported and **transcribed a lecture** (media → workflow reached
+  **Completed**); **extracted concepts + multilingual vocabulary** (language →
+  knowledge); and **search found the concept**.
+- **DURABILITY VERIFIED across a restart.** With **~77 events** after the operations,
+  an app **restart on Olares** left the count at **79** — i.e. the 77 persisted
+  events survived and the restart appended the **2 benign boot lifecycle events**
+  (`IndexCreated` + `IndexRebuilt`, §1.4). An in-memory event log would have reset to
+  ~1; the durable Postgres-backed log did not.
+
+**What this run did NOT establish (still roadmap):** repository-backed object
+**detail** recovery on boot — `GET /knowledge/:id` is still not re-projected from the
+log after a restart (§1.4, §8.4), which is why `replicas` MUST stay at **1**; the
+Olares **identity → `CallContext`** attribution bridge (KMOS ran **non-enforcing** on
+Olares); a **distributed tracing** backend; a rehearsed **`pg_dump` backup + restore
+drill** on the Olares Postgres; and a repository **LICENSE**.
+
+### 8.2 What was validated at the container level (against real pgvector/pg16)
 
 Using the repository's `docker-compose.yml` (Postgres `pgvector/pgvector:pg16` with a
 persistent volume + the KMOS container with
@@ -361,9 +413,10 @@ persistent volume + the KMOS container with
   returned Prometheus text — both work.
 
 This exercises exactly the Olares-relevant wiring: `KMOS_DATABASE_URL` → durable
-event log → survives restart → search rebuilt by replay.
+event log → survives restart → search rebuilt by replay — the same property the
+on-Olares run (§8.1) confirmed on a real node.
 
-### 8.2 Reproduce it locally
+### 8.3 Reproduce the container-level run locally
 
 ```bash
 # 1. Build (runs the full verify gate) and start Postgres + KMOS.
@@ -386,7 +439,7 @@ curl -s "localhost:8080/knowledge?q=Sincerity"           # still finds the conce
 curl -s localhost:8080/metrics | grep kmos_events_total  # count reflects the durable log
 ```
 
-### 8.3 Known, expected behaviours to account for
+### 8.4 Known, expected behaviours to account for
 
 - **Boot lifecycle events.** Each restart appends `IndexCreated` + `IndexRebuilt`
   (2 events) from the search rebuild — benign, but it means the post-restart event
@@ -414,9 +467,12 @@ Run through this on your Olares node after install and after every restart/upgra
 - [ ] Required `KMOS_SECRET_*` values are present in the container environment and
       never inlined into logs.
 
-**None of the checklist items above have been executed on a real Olares instance in
-the KMOS engineering environment** — they were validated at the container level (§8)
-and must be confirmed on your Olares.
+**The core of this checklist has now been exercised on a real Olares instance** by
+the owner on "mwayolares" — durable-log boot, the live entrance, the end-to-end
+workflow, and event-count durability across a restart (77 → 79) all held on-node
+(§8.1). The `pg_dump` backup/restore drill and enforcement/secret items were **not**
+part of that run and remain to be confirmed on **your** Olares — as do all
+node-specific values (entrance host, injected key names).
 
 ---
 

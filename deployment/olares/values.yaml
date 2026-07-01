@@ -5,8 +5,8 @@
 # locally. Verify the exact injected keys against your Olares version's docs.
 
 image:
-  # Publish the image built from this repo's Dockerfile and set it here.
-  repository: smcshahid/kmos
+  # Published by .github/workflows/release-image.yml to Docker Hub (public).
+  repository: malikshahid85/kmos
   tag: "1.0.0-pc.1"
   pullPolicy: IfNotPresent
 
