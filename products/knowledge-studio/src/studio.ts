@@ -53,13 +53,22 @@ export class StudioService {
   /** In-session original transcript per source, for same-session retry. */
   private readonly inputs = new Map<string, SubmitInput>();
   private readonly store?: SourceStore;
+  /** Provider-independent async caption/ASR fetcher (yt-dlp/Whisper/Speaches behind
+   * an HTTP contract). When absent, YouTube without a supplied transcript degrades
+   * honestly (the pipeline reports "needs infra"). */
+  private readonly captionFetcher?: (videoId: string) => Promise<string | undefined>;
   private orgId?: CanonicalId;
   private readonly now: () => string;
 
-  constructor(platform: StudioPlatform, opts: { now?: () => string; store?: SourceStore } = {}) {
+  constructor(platform: StudioPlatform, opts: {
+    now?: () => string;
+    store?: SourceStore;
+    captionFetcher?: (videoId: string) => Promise<string | undefined>;
+  } = {}) {
     this.p = platform;
     this.now = opts.now ?? (() => new Date().toISOString());
     if (opts.store) this.store = opts.store;
+    if (opts.captionFetcher) this.captionFetcher = opts.captionFetcher;
   }
 
   /**
@@ -205,10 +214,18 @@ export class StudioService {
     let acquireMode: StageState['mode'] = 'kmos';
     if (input.kind === 'youtube') {
       const yt = resolveYouTube(input.reference);
-      if (!transcriptText && yt.captions) transcriptText = yt.captions;
-      acquireMode = transcriptText ? 'kmos' : 'external';
+      let fetched = false;
+      if (!transcriptText && yt.videoId && this.captionFetcher) {
+        try {
+          const captions = await this.captionFetcher(yt.videoId);
+          if (captions && captions.trim()) { transcriptText = captions.trim(); fetched = true; }
+        } catch {
+          // Degrade gracefully: fall through to the honest "needs infra" path.
+        }
+      }
+      acquireMode = fetched ? 'kmos' : transcriptText ? 'kmos' : 'external';
       acquireDetail = yt.videoId
-        ? `YouTube video ${yt.videoId}. ${transcriptText ? 'Captions/transcript supplied.' : 'Download + captions run via a yt-dlp capability in production.'}`
+        ? `YouTube video ${yt.videoId}. ${fetched ? 'Captions fetched via the configured caption/ASR capability.' : transcriptText ? 'Captions/transcript supplied.' : 'Download + captions run via a yt-dlp/Whisper capability (not configured here).'}`
         : 'Unrecognized YouTube URL.';
     } else {
       acquireDetail = input.kind === 'upload'

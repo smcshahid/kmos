@@ -1,0 +1,40 @@
+# Knowledge Studio Olares Application Chart — values.
+# PREPARED, NOT VALIDATED on a real Olares instance from the engineering environment.
+# Knowledge Studio is a COMPANION to the KMOS deployment: it is a second stateless
+# compute deployable over the SAME shared PostgreSQL event log (one institutional
+# memory; no duplicate database). See DEPLOYMENT-GUIDE.md for the two sharing modes.
+
+image:
+  # Build+push from products/knowledge-studio/Dockerfile (see .github workflow).
+  # NOT yet published — build and push before install, or point at your registry.
+  repository: malikshahid85/knowledge-studio
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+# SHARED-DATABASE MODE (recommended): point Knowledge Studio at the SAME PostgreSQL
+# the KMOS app uses, so processed knowledge is one shared institutional memory across
+# both apps. Set this to the KMOS database URL reachable in-cluster. When empty, the
+# chart falls back to the Olares-injected postgres.* below (ISOLATED mode — Knowledge
+# Studio gets its own event log, NOT shared with KMOS).
+databaseUrl: ""
+
+# ISOLATED-mode fallback (Olares-injected middleware). Placeholders for local render.
+postgres:
+  host: postgres
+  port: 5432
+  username: kmos
+  password: changeme
+  databases:
+    kmos: kmos
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+# Attribution enforcement (CRIT-2). Off by default; Olares supplies the user identity
+# a production wiring would map into a KMOS CallContext.
+enforce: false
