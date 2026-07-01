@@ -1,0 +1,31 @@
+{
+  "name": "@kmos/sdk",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "KMOS application SDK — compose the platform substrate (the 8 platform services on one canonical bus, durable/in-memory EventLog, boot recovery) so an application never repeats the wiring. Domain composition stays in the app (KMOS-0200 §17).",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@kmos/canonical-kernel": "*",
+    "@kmos/events": "*",
+    "@kmos/platform-catalog": "*",
+    "@kmos/identity": "*",
+    "@kmos/assets": "*",
+    "@kmos/knowledge": "*",
+    "@kmos/governance": "*",
+    "@kmos/capability-registry": "*",
+    "@kmos/capability-runtime": "*",
+    "@kmos/search": "*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --experimental-strip-types --import ../../tools/dev/register.mjs --test test/*.test.ts"
+  }
+}

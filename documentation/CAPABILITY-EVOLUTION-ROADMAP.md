@@ -58,7 +58,7 @@ marked `pending WP<n>` until their work package lands green.
 | **Provider fallback / graceful degradation** (`withFallback`) | `@kmos/reference-capabilities` | `CapabilityHandler` composition | The **same** try-provider-then-fall-back pattern was hand-rolled **twice, differently**, inside one application: `products/knowledge-studio/src/ollama-extraction.ts:93‑99` (Ollama → reference extractor) and `caption.ts:41‑43` + `studio.ts:218‑225` (HTTP fail → honest degradation). Duplication across two capabilities in a single app is concrete evidence of a cross-cutting primitive; a second app would write a third variant. | **KCSI-01 WP1 (landed)** |
 | **LLM knowledge-extraction adapter** (Ollama) | `@kmos/providers` | `KnowledgeExtraction` (existing) | A complete, tested provider adapter (`ollama-extraction.ts`) is trapped in the application behind the existing extraction contract; every knowledge app re-implements the same HTTP-to-LLM adapter. Reuse is concrete, not hypothetical. | **KCSI-01 WP2 (landed)** |
 | **Speech-transcription / caption-acquisition adapter** (HTTP: yt-dlp/Whisper/Speaches) | `@kmos/providers` | `Transcription` (existing) | The caption/ASR HTTP adapter (`caption.ts` + `youtube.ts` + `studio.ts:211‑240`) is a reusable transcription/acquisition seam trapped in the app; extraction also resolves a live sync/async `CaptionFetcher` type-smell (`youtube.ts:19` vs `caption.ts:20`). | **KCSI-01 WP3 (landed)** |
-| **Platform-substrate SDK** (`createPlatformRuntime`) | `@kmos/sdk` | Composition factory over `platform/*` | `platform.ts:47‑102` is the durable/in-memory + boot-hydration substrate boilerplate **every** KMOS deployable must repeat verbatim (the `applications/*` reference apps each re-do a variant); it is the most-duplicated, most error-prone, purely platform-layer code. | KCSI-01 WP4 (pending) |
+| **Platform-substrate SDK** (`createPlatformRuntime`) | `@kmos/sdk` | Composition factory over `platform/*` | `platform.ts:47‑102` is the durable/in-memory + boot-hydration substrate boilerplate **every** KMOS deployable must repeat verbatim (the `applications/*` reference apps each re-do a variant); it is the most-duplicated, most error-prone, purely platform-layer code. | **KCSI-01 WP4 (landed)** |
 
 ## 4. Deferred capabilities (not built — with promotion triggers)
 
@@ -86,6 +86,7 @@ consume directly — no extraction pending.
 | 2026-07-01 | WP1 landed: `withFallback` in `@kmos/reference-capabilities` (12 tests pass; fitness clean). Provider fallback/degradation is now a platform primitive. |
 | 2026-07-01 | WP2 landed: `@kmos/providers` created; Ollama knowledge-extraction adapter relocated + refactored onto `withFallback` (7 tests pass; fitness clean, 30 packages). |
 | 2026-07-01 | WP3 landed: HTTP caption/ASR transcription adapter relocated to `@kmos/providers` with an async `CaptionFetcher` type (fixes the app's dead sync-fetcher smell); 13 package tests pass; fitness clean. |
+| 2026-07-01 | WP4 landed: `@kmos/sdk` platform-substrate factory (`createPlatformRuntime[FromEnv]` + `hydratePlatformRuntime`); composes the 8 platform services + boot recovery. 4 tests pass incl. ADR-0011 recovery; fitness clean, 31 packages. |
 
 _Maintenance rule: this file is updated in the **same** change that extracts a
 capability (add its §3 row + rationale), fires a trigger (move §4 → §3), or defers a
