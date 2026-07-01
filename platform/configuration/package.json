@@ -1,6 +1,6 @@
 {
   "name": "@kmos/configuration",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-pc.1",
   "private": true,
   "type": "module",
   "description": "KMOS Configuration Service (KMOS-0209): externalized, versioned, governed configuration with secret references.",

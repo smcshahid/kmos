@@ -1,6 +1,6 @@
 {
   "name": "@kmos/language",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-pc.1",
   "private": true,
   "type": "module",
   "description": "KMOS Language domain service (KMOS-0002/0004 Language, KMOS-0005 institutional memory): composes transcript-correction, knowledge-extraction and translation capabilities via the Workflow + Runtime. Holds no business logic of its own.",

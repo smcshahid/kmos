@@ -10,6 +10,7 @@
  * progressively, at service write APIs.
  */
 
+import { AsyncLocalStorage } from 'node:async_hooks';
 import type { CanonicalId } from './identifiers.js';
 import type { CanonicalEvent } from './event-envelope.js';
 
@@ -41,3 +42,55 @@ export interface Authorizer {
 export const ALLOW_ALL: Authorizer = {
   authorize: () => ({ allowed: true }),
 };
+
+/* ------------------------------------------------------------------ */
+/* Ambient CallContext (CRIT-2 pervasive attribution).                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Request/operation-scoped CallContext propagation (KMOS-9999 §15, KMOS-0206).
+ *
+ * Attribution is a cross-cutting security concern, so the acting actor + tenant
+ * are carried in an `AsyncLocalStorage` that propagates across `await`s, rather
+ * than threaded as a parameter through every service write method. The bus reads
+ * this at the single chokepoint and STAMPS `actorId`/`organizationId` onto every
+ * persisted event (see {@link attributeFromContext}). The audit trail therefore
+ * stays explicit (every fact carries its actor) while the plumbing stays out of
+ * business signatures. `node:async_hooks` is a Node builtin — no npm dependency
+ * is added (D-F preserved).
+ */
+const contextStore = new AsyncLocalStorage<CallContext>();
+
+/** Run `fn` with `context` as the ambient CallContext (propagates across awaits). */
+export function runWithContext<T>(context: CallContext, fn: () => T): T {
+  return contextStore.run(context, fn);
+}
+
+/** The ambient CallContext for the current async execution, if any. */
+export function currentContext(): CallContext | undefined {
+  return contextStore.getStore();
+}
+
+/**
+ * Return an event attributed to the ambient CallContext. If a context is active
+ * and the event lacks `actorId`/`organizationId`, stamp them onto a copy.
+ * EXPLICIT values already on the event always win (correct precedence: a service
+ * that knows the true subject tenant overrides the ambient one). No context →
+ * the event is returned unchanged, so non-enforcing deployments are unaffected.
+ */
+export function attributeFromContext(event: CanonicalEvent): CanonicalEvent {
+  const ctx = contextStore.getStore();
+  if (ctx === undefined) return event;
+  const id = event.identity;
+  const needsActor = id.actorId === undefined && ctx.actorId !== undefined;
+  const needsOrg = id.organizationId === undefined && ctx.organizationId !== undefined;
+  if (!needsActor && !needsOrg) return event;
+  return {
+    ...event,
+    identity: {
+      ...id,
+      ...(needsActor ? { actorId: ctx.actorId } : {}),
+      ...(needsOrg ? { organizationId: ctx.organizationId } : {}),
+    },
+  };
+}

@@ -1,0 +1,31 @@
+apiVersion: v2
+name: kmos
+description: |
+  KMOS — modular-monolith knowledge-management platform. A single deployable
+  api-server process (Node 22+) that exposes REST + /health + /metrics and is
+  backed by an external PostgreSQL (KMOS_DATABASE_URL). Secrets are resolved from
+  the environment (EnvSecretResolver, KMOS_SECRET_* variables).
+
+  PREPARED, NOT VALIDATED: this chart was authored from the repository sources but
+  has NOT been deployed to or validated against any Kubernetes cluster in this
+  engineering environment. Treat it as a starting point to review before use.
+type: application
+
+# Chart version (chart packaging), bumped independently of the app.
+version: 0.1.0
+
+# The KMOS release this chart targets. Matches the platform release candidate.
+appVersion: "1.0.0-rc.1"
+
+kubeVersion: ">=1.24.0-0"
+
+home: https://github.com/kmos/kmos
+sources:
+  - https://github.com/kmos/kmos
+
+maintainers:
+  - name: KMOS Platform Team
+
+# NOTE: PostgreSQL is intentionally NOT bundled as a subchart dependency for
+# production. Provide an external/managed Postgres and point KMOS_DATABASE_URL at
+# it (see values.yaml `database` and documentation/DEPLOYMENT-TARGETS.md).

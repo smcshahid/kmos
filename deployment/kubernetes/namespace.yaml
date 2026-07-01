@@ -1,0 +1,9 @@
+# KMOS namespace.
+# PREPARED, NOT VALIDATED: authored from repository sources; not applied to any
+# cluster in this engineering environment.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kmos
+  labels:
+    app.kubernetes.io/part-of: kmos

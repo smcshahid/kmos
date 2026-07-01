@@ -1,0 +1,32 @@
+# KMOS Ingress (OPTIONAL — apply only if you run an ingress controller).
+# TOGGLE: this manifest is separate so you can choose to apply it or not. To
+# disable ingress, simply do not `kubectl apply` this file.
+#
+# PREPARED, NOT VALIDATED: adjust host, ingressClassName, TLS and annotations for
+# your controller (nginx, traefik, cloud LB) before applying.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kmos
+  namespace: kmos
+  labels:
+    app.kubernetes.io/name: kmos
+  # annotations:
+  #   cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  # ingressClassName: nginx
+  # tls:
+  #   - hosts:
+  #       - kmos.example.com
+  #     secretName: kmos-tls
+  rules:
+    - host: kmos.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kmos
+                port:
+                  number: 80

@@ -1,6 +1,6 @@
 {
   "name": "@kmos/api-server",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-pc.1",
   "private": true,
   "type": "module",
   "description": "KMOS HTTP API server (node:http, zero runtime deps): exposes canonical business operations over REST and serves the reference web UI. Composes the platform on one shared canonical event bus.",

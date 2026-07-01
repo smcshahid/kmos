@@ -1,6 +1,6 @@
 {
   "name": "@kmos/public-api",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-pc.1",
   "private": true,
   "type": "module",
   "description": "Public API (KMOS-0180, WP-22): a THIN canonical business-operations facade. Exposes business capabilities over canonical resources + canonical events by composing the Knowledge, Asset, Search and Event platform services. Returns canonical objects/events only; leaks no implementation details. Contains no business logic.",

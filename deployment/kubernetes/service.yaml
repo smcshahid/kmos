@@ -1,0 +1,18 @@
+# KMOS api-server Service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: kmos
+  namespace: kmos
+  labels:
+    app.kubernetes.io/name: kmos
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: kmos
+    app.kubernetes.io/instance: kmos
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

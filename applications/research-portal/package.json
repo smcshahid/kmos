@@ -1,6 +1,6 @@
 {
   "name": "@kmos/research-portal",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-pc.1",
   "private": true,
   "type": "module",
   "description": "Research Portal (KMOS-0009): a THIN application that composes the Search, Knowledge and Asset Registry platform services to support discovery, evidence-backed question answering and citation lookup. Contains no business logic and owns no canonical objects.",
