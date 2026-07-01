@@ -16,6 +16,7 @@
     { "path": "engines/platform-catalog" },
     { "path": "engines/observability" },
     { "path": "capabilities/reference-capabilities" },
+    { "path": "capabilities/providers" },
     { "path": "domains/media" },
     { "path": "domains/language" },
     { "path": "domains/publishing" },
