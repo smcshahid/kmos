@@ -41,3 +41,24 @@ resources:
 # Attribution enforcement (CRIT-2). Off by default; Olares supplies the user identity
 # a production wiring would map into a KMOS CallContext.
 enforce: false
+
+# FRICTIONLESS YOUTUBE. Explicit caption/ASR endpoint (KS_CAPTION_ENDPOINT). Leave empty
+# to auto-use the sidecar below when it is enabled.
+captionEndpoint: ""
+
+# Optional caption/ASR sidecar (yt-dlp + Whisper/Speaches) in the SAME pod, so YouTube URLs
+# process end-to-end and Knowledge Studio reaches it at http://localhost:8092 — no cross-app
+# networking. Point speachesUrl at your Olares Whisper/Speaches server for the ASR fallback
+# (captions-only works without it). Provider-independent: any OpenAI-audio-compatible ASR.
+captionService:
+  enabled: false
+  image:
+    repository: malikshahid85/knowledge-studio-caption
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+  port: 8092
+  speachesUrl: ""            # e.g. http://speaches.<ns>:8000  (empty → captions only)
+  asrModel: "Systran/faster-whisper-small"
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: "1", memory: 512Mi }

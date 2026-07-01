@@ -34,6 +34,10 @@ spec:
               value: {{ .Values.databaseUrl | default (printf "postgres://%s:%s@%s:%v/%s" .Values.postgres.username .Values.postgres.password .Values.postgres.host .Values.postgres.port .Values.postgres.databases.studio) | quote }}
             - name: KMOS_ENFORCE
               value: "{{ .Values.enforce }}"
+            # Frictionless YouTube: use the in-pod caption sidecar when enabled, else the
+            # explicit captionEndpoint (empty → YouTube asks for a pasted transcript).
+            - name: KS_CAPTION_ENDPOINT
+              value: {{ if .Values.captionService.enabled }}{{ printf "http://localhost:%v" .Values.captionService.port | quote }}{{ else }}{{ .Values.captionEndpoint | quote }}{{ end }}
           livenessProbe:
             httpGet:
               path: /health
@@ -48,3 +52,28 @@ spec:
             periodSeconds: 10
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+        {{- if .Values.captionService.enabled }}
+        # Caption/ASR sidecar (yt-dlp + Whisper/Speaches). Same pod → Knowledge Studio
+        # reaches it at http://localhost:<port>. Provider-independent via SPEACHES_URL.
+        - name: caption-service
+          image: "{{ .Values.captionService.image.repository }}:{{ .Values.captionService.image.tag }}"
+          imagePullPolicy: {{ .Values.captionService.image.pullPolicy }}
+          ports:
+            - name: caption
+              containerPort: {{ .Values.captionService.port }}
+          env:
+            - name: PORT
+              value: "{{ .Values.captionService.port }}"
+            - name: SPEACHES_URL
+              value: {{ .Values.captionService.speachesUrl | quote }}
+            - name: ASR_MODEL
+              value: {{ .Values.captionService.asrModel | quote }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: caption
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            {{- toYaml .Values.captionService.resources | nindent 12 }}
+        {{- end }}
