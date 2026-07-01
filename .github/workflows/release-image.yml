@@ -1,0 +1,64 @@
+name: Release image
+
+# Builds the KMOS container image (amd64) and pushes it to Docker Hub so an
+# Olares / Kubernetes deployment can pull it. The image self-verifies at build
+# time (the Dockerfile runs `npm run verify`). Requires two repository secrets:
+#   DOCKERHUB_USERNAME  — your Docker Hub username (also the image namespace)
+#   DOCKERHUB_TOKEN     — a Docker Hub access token with read/write/delete
+# Trigger manually (Actions → Release image → Run workflow) or by pushing a v* tag.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag (e.g. 1.0.0-pc.1)'
+        required: true
+        default: '1.0.0-pc.1'
+  push:
+    tags: ['v*']
+
+jobs:
+  image:
+    name: Build & push (amd64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Resolve image tag
+        id: meta
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fail early if Docker Hub secrets are missing
+        run: |
+          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "::error::Set repository secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN first."
+            exit 1
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/kmos:${{ steps.meta.outputs.tag }}
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/kmos:latest
+
+      - name: Summary
+        run: |
+          echo "Pushed: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/kmos:${{ steps.meta.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Also tagged: latest" >> "$GITHUB_STEP_SUMMARY"
