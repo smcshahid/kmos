@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { createStudioPlatform } from '../src/platform.ts';
 import { StudioService } from '../src/studio.ts';
-import { makeHttpCaptionFetcher } from '../src/caption.ts';
+import { makeHttpCaptionFetcher } from '@kmos/providers';
 import { SAMPLE_TRANSCRIPT } from '../src/sample.ts';
 
 /** Stand up a throwaway HTTP server for the duration of a test. */

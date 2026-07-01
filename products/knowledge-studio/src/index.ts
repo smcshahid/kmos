@@ -16,16 +16,15 @@ export * from './evidence.js';
 export * from './downloads.js';
 export * from './youtube.js';
 export * from './source-store.js';
-export * from './caption.js';
-export * from './ollama-extraction.js';
 export { SAMPLE_TITLE, SAMPLE_TRANSCRIPT } from './sample.js';
 
 import { PgSqlClient } from '@kmos/events';
+// Provider adapters now live in the shared capability layer (KCSI-01): the app injects
+// them but no longer owns the HTTP/provider logic.
+import { makeHttpCaptionFetcher, createOllamaExtraction } from '@kmos/providers';
 import { createStudioPlatformFromEnv } from './platform.js';
 import { StudioService } from './studio.js';
 import { PostgresSourceStore } from './source-store.js';
-import { makeHttpCaptionFetcher } from './caption.js';
-import { createOllamaExtraction } from './ollama-extraction.js';
 import { createStudioServer } from './http.js';
 
 const isMain = import.meta.url === `file://${process.argv[1]}`

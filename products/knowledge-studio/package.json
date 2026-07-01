@@ -14,15 +14,9 @@
   },
   "dependencies": {
     "@kmos/canonical-kernel": "*",
-    "@kmos/identity": "*",
-    "@kmos/assets": "*",
-    "@kmos/knowledge": "*",
-    "@kmos/governance": "*",
     "@kmos/events": "*",
-    "@kmos/capability-registry": "*",
-    "@kmos/capability-runtime": "*",
-    "@kmos/search": "*",
-    "@kmos/platform-catalog": "*",
+    "@kmos/sdk": "*",
+    "@kmos/providers": "*",
     "@kmos/media": "*",
     "@kmos/language": "*",
     "@kmos/reference-capabilities": "*"

@@ -87,6 +87,7 @@ consume directly — no extraction pending.
 | 2026-07-01 | WP2 landed: `@kmos/providers` created; Ollama knowledge-extraction adapter relocated + refactored onto `withFallback` (7 tests pass; fitness clean, 30 packages). |
 | 2026-07-01 | WP3 landed: HTTP caption/ASR transcription adapter relocated to `@kmos/providers` with an async `CaptionFetcher` type (fixes the app's dead sync-fetcher smell); 13 package tests pass; fitness clean. |
 | 2026-07-01 | WP4 landed: `@kmos/sdk` platform-substrate factory (`createPlatformRuntime[FromEnv]` + `hydratePlatformRuntime`); composes the 8 platform services + boot recovery. 4 tests pass incl. ADR-0011 recovery; fitness clean, 31 packages. |
+| 2026-07-01 | WP5 landed: Knowledge Studio refactored onto `@kmos/sdk` + `@kmos/providers`; `caption.ts` + `ollama-extraction.ts` deleted from the app. All 33 KS tests pass (identical behavior). App `src` 2052→1857 LOC (−9.5%), 15→13 files, direct `@kmos/*` deps 13→7; no provider HTTP logic remains in the app. |
 
 _Maintenance rule: this file is updated in the **same** change that extracts a
 capability (add its §3 row + rationale), fires a trigger (move §4 → §3), or defers a

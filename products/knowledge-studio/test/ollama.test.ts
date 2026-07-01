@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createStudioPlatform } from '../src/platform.ts';
 import { StudioService } from '../src/studio.ts';
-import { createOllamaExtraction } from '../src/ollama-extraction.ts';
+import { createOllamaExtraction } from '@kmos/providers';
 import { SAMPLE_TRANSCRIPT, SAMPLE_TITLE } from '../src/sample.ts';
 
 /** A fake fetch that returns an Ollama /api/chat response with the given concepts. */
