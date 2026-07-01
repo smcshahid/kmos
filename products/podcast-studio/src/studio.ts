@@ -24,6 +24,7 @@ import { chapterClips, highlightReel, type HighlightSpan } from './clips.js';
 import { extractiveSummary } from './summary.js';
 import { detectMoments } from './moments.js';
 import { buildPackage as renderDownloadPackage, type PackageFile } from './downloads.js';
+import { type EpisodeStore, trustSubset } from './episode-store.js';
 import type {
   ConceptView, LineageNode, RelatedConcept, Episode, EpisodeKind, StageId, StageState, TrustView,
 } from './types.js';
@@ -68,18 +69,57 @@ export class PodcastStudioService {
   /** Provider-independent transcript/ASR fetcher (yt-dlp/Whisper/Speaches behind an
    * HTTP contract, from @kmos/providers). Absent → honest degradation. */
   private readonly transcriptFetcher?: TranscriptFetcher;
+  private readonly store?: EpisodeStore;
 
-  constructor(platform: PodcastPlatform, opts: { now?: () => string; transcriptFetcher?: TranscriptFetcher } = {}) {
+  constructor(platform: PodcastPlatform, opts: { now?: () => string; transcriptFetcher?: TranscriptFetcher; store?: EpisodeStore } = {}) {
     this.p = platform;
     this.now = opts.now ?? (() => new Date().toISOString());
     if (opts.transcriptFetcher) this.transcriptFetcher = opts.transcriptFetcher;
+    if (opts.store) this.store = opts.store;
+  }
+
+  /**
+   * Recover persisted episode job-state on boot so the full experience survives a
+   * restart (the daily-driver promise). Canonical knowledge is already rehydrated by
+   * the platform from the durable event log; here we restore the view layer. An episode
+   * caught mid-processing by the restart is marked failed-and-retryable rather than left
+   * forever "processing".
+   */
+  async init(): Promise<void> {
+    if (!this.store) return;
+    await this.store.init();
+    for (const entry of await this.store.load()) {
+      const ep = entry.episode;
+      if (ep.status === 'processing' || ep.status === 'queued') {
+        ep.status = 'failed';
+        ep.error = 'Processing was interrupted by a restart. Retry to finish.';
+        const running = ep.stages.find((s) => s.status === 'running' || s.status === 'pending');
+        if (running && running.status === 'running') running.status = 'failed';
+      }
+      this.episodes.set(ep.id, ep);
+      for (const cid of ep.conceptIds) this.conceptEpisode.set(cid, ep.id);
+      for (const [cid, t] of Object.entries(entry.trust)) this.trust.set(cid as CanonicalId, t);
+    }
+  }
+
+  private async persist(episodeId: string): Promise<void> {
+    if (!this.store) return;
+    const ep = this.episodes.get(episodeId);
+    if (!ep) return;
+    try {
+      await this.store.save({ episode: ep, trust: trustSubset(ep.conceptIds, this.trust) });
+    } catch {
+      // Persistence is best-effort; a storage hiccup must never crash processing.
+    }
   }
 
   /** Register an episode and start processing in the background. Returns immediately
    * with the queued Episode so the UI can poll {@link getEpisode} for live progress. */
   async submit(input: SubmitInput): Promise<Episode> {
     const ep = await this.createEpisode(input);
-    void this.runPipeline(ep.id, input).catch((err: unknown) => this.failEpisode(ep.id, err));
+    void this.runPipeline(ep.id, input)
+      .then(() => this.persist(ep.id))
+      .catch((err: unknown) => this.failEpisode(ep.id, err));
     return ep;
   }
 
@@ -88,6 +128,7 @@ export class PodcastStudioService {
     const ep = await this.createEpisode(input);
     try {
       await this.runPipeline(ep.id, input);
+      await this.persist(ep.id);
     } catch (err) {
       await this.failEpisode(ep.id, err);
     }
@@ -115,7 +156,9 @@ export class PodcastStudioService {
     ep.error = '';
     for (const st of ep.stages) { st.status = 'pending'; delete st.detail; delete st.startedAt; delete st.finishedAt; }
     this.inputs.set(episodeId, input);
-    void this.runPipeline(episodeId, input).catch((err: unknown) => this.failEpisode(episodeId, err));
+    void this.runPipeline(episodeId, input)
+      .then(() => this.persist(episodeId))
+      .catch((err: unknown) => this.failEpisode(episodeId, err));
     return ep;
   }
 
@@ -125,7 +168,14 @@ export class PodcastStudioService {
     if (!ep) return undefined;
     ep.favorite = !ep.favorite;
     ep.updatedAt = this.now();
+    await this.persist(episodeId);
     return ep;
+  }
+
+  /** Create a KMOS Collection from chosen concepts (daily-driver curation). */
+  async createCollection(name: string, memberIds: readonly CanonicalId[]): Promise<{ id: CanonicalId; name: string; memberIds: readonly CanonicalId[] }> {
+    const col = await this.p.knowledge.createCollection(name, memberIds);
+    return { id: col.id, name, memberIds };
   }
 
   private async createEpisode(input: SubmitInput): Promise<Episode> {
@@ -150,6 +200,7 @@ export class PodcastStudioService {
     };
     this.episodes.set(id, ep);
     this.inputs.set(id, input);
+    await this.persist(id);
     return ep;
   }
 
@@ -383,6 +434,7 @@ export class PodcastStudioService {
     const running = ep.stages.find((s) => s.status === 'running');
     if (running) { running.status = 'failed'; running.finishedAt = this.now(); }
     ep.updatedAt = this.now();
+    await this.persist(episodeId);
   }
 
   // --- Read models --------------------------------------------------------
