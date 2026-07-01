@@ -6,3 +6,4 @@
  * justified it in documentation/CAPABILITY-EVOLUTION-ROADMAP.md §3.
  */
 export * from './knowledge-extraction/ollama.js';
+export * from './transcription/http.js';
