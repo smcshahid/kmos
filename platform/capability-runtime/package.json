@@ -1,6 +1,6 @@
 {
   "name": "@kmos/capability-runtime",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-pc.1",
   "private": true,
   "type": "module",
   "description": "KMOS Capability Runtime (KMOS-0210): executes registered capabilities behind stable business contracts, isolated and technology-independent.",

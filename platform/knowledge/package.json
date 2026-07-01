@@ -1,6 +1,6 @@
 {
   "name": "@kmos/knowledge",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-pc.1",
   "private": true,
   "type": "module",
   "description": "KMOS Knowledge Service (KMOS-0201): canonical knowledge, concepts, vocabulary, relationships and the semantic graph projection.",

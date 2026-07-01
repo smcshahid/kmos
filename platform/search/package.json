@@ -1,6 +1,6 @@
 {
   "name": "@kmos/search",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-pc.1",
   "private": true,
   "type": "module",
   "description": "KMOS Search & Discovery Service (KMOS-0208): governance-aware discovery via event-driven projections.",

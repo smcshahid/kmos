@@ -1,6 +1,6 @@
 {
   "name": "@kmos/publishing",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-pc.1",
   "private": true,
   "type": "module",
   "description": "KMOS Publishing domain service (KMOS-0002 Publishing): composes a deterministic metadata-generation capability via the Workflow + Runtime, packages a Publication asset with lineage to its sources, and releases only after a Governance approval. Holds no business logic of its own (it lives in capabilities).",

@@ -1,6 +1,6 @@
 {
   "name": "@kmos/observability",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-pc.1",
   "private": true,
   "type": "module",
   "description": "Zero-dependency observability toolkit (metrics, structured logging, health) every KMOS service uses to expose health/metrics/logs (KMOS-0200 \u00a713, KMOS-9999 \u00a718). Deterministic: clocks/sinks are injected.",

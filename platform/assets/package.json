@@ -1,6 +1,6 @@
 {
   "name": "@kmos/assets",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-pc.1",
   "private": true,
   "type": "module",
   "description": "KMOS Asset Registry Service (KMOS-0202): authoritative institutional evidence service.",

@@ -1,6 +1,6 @@
 {
   "name": "@kmos/governance",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-pc.1",
   "private": true,
   "type": "module",
   "description": "KMOS Governance Service (KMOS-0207): evidence-driven, explainable governance engine.",

@@ -1,6 +1,6 @@
 {
   "name": "@kmos/learning-platform",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-pc.1",
   "private": true,
   "type": "module",
   "description": "Learning Platform (KMOS-0009): a THIN application that assembles institutional knowledge into curricula and lessons. Lessons present authoritative Knowledge; the app owns no business logic and no canonical objects (progress is ephemeral session state).",
