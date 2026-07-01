@@ -38,6 +38,7 @@ const LAYER_RANK = {
   connectors: 3,
   domains: 3,
   applications: 4,
+  products: 5,
 };
 
 const LAYER_DIRS = Object.keys(LAYER_RANK);
