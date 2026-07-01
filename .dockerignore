@@ -1,0 +1,18 @@
+# Build context hygiene: the image installs its own dependencies (npm ci) and
+# builds from source, so host build artifacts must never enter the context.
+node_modules
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+.git
+.github
+.gitignore
+coverage
+*.log
+.env
+.env.*
+.DS_Store
+# local/editor noise
+scratchpad
+**/.vscode
+**/.idea

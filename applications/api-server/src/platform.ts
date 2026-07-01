@@ -4,7 +4,8 @@
  * This is the in-process modular-monolith composition (KMOS-0200 §17); the same
  * wiring runs behind real persistence/transport adapters in production.
  */
-import { EventBus, type Authorizer } from '@kmos/canonical-kernel';
+import { EventBus, type Authorizer, type EventLog } from '@kmos/canonical-kernel';
+import { PgSqlClient, PostgresEventLog, EVENTS_TABLE_DDL } from '@kmos/events';
 import { createPlatformCatalog } from '@kmos/platform-catalog';
 import { IdentityService } from '@kmos/identity';
 import { AssetRegistryService } from '@kmos/assets';
@@ -52,12 +53,8 @@ export interface CreatePlatformOptions {
   readonly authorizer?: Authorizer;
 }
 
-export function createPlatform(options: CreatePlatformOptions = {}): KmosPlatform {
-  const bus = new EventBus({
-    catalog: createPlatformCatalog(),
-    ...(options.enforce ? { requireActor: true } : {}),
-    ...(options.authorizer ? { authorizer: options.authorizer } : {}),
-  });
+/** Wire every service/domain/application onto one shared bus. */
+function wireServices(bus: EventBus): KmosPlatform {
   const identity = new IdentityService({ bus });
   const assets = new AssetRegistryService({ bus });
   const knowledge = new KnowledgeService({ bus });
@@ -73,4 +70,47 @@ export function createPlatform(options: CreatePlatformOptions = {}): KmosPlatfor
   const studio = new KnowledgeStudio({ search, knowledge });
   const explorer = new ArchiveExplorer({ assets });
   return { bus, identity, assets, knowledge, governance, events, registry, runtime, search, media, language, publishing, preservation, studio, explorer };
+}
+
+function makeBus(log: EventLog | undefined, options: CreatePlatformOptions): EventBus {
+  return new EventBus({
+    catalog: createPlatformCatalog(),
+    ...(log ? { log } : {}),
+    ...(options.enforce ? { requireActor: true } : {}),
+    ...(options.authorizer ? { authorizer: options.authorizer } : {}),
+  });
+}
+
+/** In-memory composition (dev/demo/tests). */
+export function createPlatform(options: CreatePlatformOptions = {}): KmosPlatform {
+  return wireServices(makeBus(undefined, options));
+}
+
+/**
+ * Environment-driven composition for real deployments (Olares / Kubernetes /
+ * docker-compose). When `KMOS_DATABASE_URL` is set, the canonical `EventLog` —
+ * the institutional system of record — is backed by real PostgreSQL
+ * (`PgSqlClient` + `PostgresEventLog`); the events table is created on boot
+ * (idempotent DDL) and the search index is rebuilt from the durable log. With no
+ * URL, the platform runs fully in-memory.
+ *
+ * HONEST SCOPE: this makes the **event log durable across restarts** (the system
+ * of record survives) and rebuilds the **search projection** on boot. Repository-
+ * backed object detail (e.g. `GET /knowledge/:id`) is NOT yet rebuilt from the
+ * log on boot — that is the tracked read-model-persistence roadmap item
+ * (engineering/review/16 §6/§17). Do not run more than one replica until it lands
+ * (in-memory projections are per-pod).
+ */
+export async function createPlatformFromEnv(options: CreatePlatformOptions = {}): Promise<KmosPlatform> {
+  const url = process.env.KMOS_DATABASE_URL;
+  if (!url) return createPlatform(options);
+
+  const sql = new PgSqlClient(url);
+  await sql.query(EVENTS_TABLE_DDL); // idempotent migration — safe on every boot
+  const platform = wireServices(makeBus(new PostgresEventLog(sql), options));
+  // Recovery on boot: rebuild the search index from the durable log. rebuild()
+  // replays into a fresh store and emits a single IndexRebuilt (it does NOT
+  // re-emit per-document events), so it is safe to run on every start.
+  await platform.search.rebuild();
+  return platform;
 }

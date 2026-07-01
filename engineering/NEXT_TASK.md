@@ -2,7 +2,10 @@
 
 _Last updated: 2026-06-30_
 
-## Status: PRODUCTION CANDIDATE 1.0.0-pc.1. CRIT-1 + CRIT-2 resolved. NOT yet GA — see engineering/review/16-PRODUCTION-CANDIDATE-CLOSEOUT.md.
+## Status: PRODUCTION CANDIDATE 1.0.0-pc.1 + durable-persistence proven. CRIT-1 + CRIT-2 resolved. Olares = container-validated, package-prepared. NOT yet GA — see engineering/review/17-OLARES-DEPLOYMENT-REPORT.md.
+
+**Olares program (review/17):** the server now persists the canonical event log to real PostgreSQL (KMOS_DATABASE_URL) — VERIFIED via docker-compose that 3 knowledge writes survive a container restart + search recovers from the log. Olares Application Chart (deployment/olares/) prepared but NOT installed on a real Olares (none available here). Next: guided real-Olares install (via Olares Studio) + read-model persistence (removes replicas=1).
+
 
 CRIT-1 (async EventLog, ADR-0009) and CRIT-2 (pervasive attribution via ambient CallContext) are resolved with tests; EventLog contract passes against REAL Postgres in CI. Secrets (EnvSecretResolver) + enforcing composition scaffolded behind ports. Full governance/ops/deployment/SDK docs; Helm/K8s prepared (not validated); CHANGELOG; versions consistent at 1.0.0-pc.1. 224/225 tests pass (1 real-PG CI-only); fitness 0; CI green (static + tests + real-Postgres).
 

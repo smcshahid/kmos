@@ -1,0 +1,78 @@
+# KMOS — Olares Application Chart manifest (OlaresManifest.yaml).
+#
+# PREPARED, NOT VALIDATED: this manifest is authored from the OlaresManifest
+# specification (docs.olares.com → Developer → Package → OlaresManifest) but has
+# NOT been installed or tested on a real Olares instance from the engineering
+# environment. Field names/values should be verified against YOUR Olares
+# version's manifest spec before submission, and tested via Olares Studio in a
+# real environment (the Olares-recommended pre-submission step).
+#
+# An Olares Application Chart (OAC) = a Helm chart (Chart.yaml + templates/) PLUS
+# this file. KMOS consumes Olares-provided PostgreSQL middleware (it does NOT
+# bundle its own database); the chart builds KMOS_DATABASE_URL from the injected
+# .Values.postgres.* (see templates/deployment.yaml).
+
+olaresManifest.version: '0.10.0'
+olaresManifest.type: app
+
+metadata:
+  name: kmos
+  appid: kmos
+  title: KMOS
+  description: >-
+    Knowledge & Media Operating System — an institutional knowledge platform
+    with a durable, replayable canonical event log, governed capabilities, and a
+    constitutional architecture. The system of record is a PostgreSQL-backed
+    append-only event log; read models are projections rebuilt by replay.
+  icon: https://raw.githubusercontent.com/smcshahid/kmos/main/deployment/olares/icon.png
+  version: 1.0.0        # Olares app/chart version (semver; see spec.versionName for the KMOS stage)
+  categories:
+    - Productivity
+    - Utilities
+
+# How users reach KMOS. The api-server listens on 8080 (GET / UI, /health, /metrics).
+entrances:
+  - name: kmos
+    port: 8080
+    host: kmos
+    title: KMOS
+    authLevel: private     # require Olares auth; KMOS also has its own Identity Service
+    openMethod: default
+
+spec:
+  versionName: '1.0.0-pc.1'   # human-facing KMOS version (Production Candidate)
+  requiredMemory: 256Mi
+  limitedMemory: 1Gi
+  requiredCpu: 250m
+  limitedCpu: '1'
+  requiredDisk: 256Mi
+  limitedDisk: 2Gi
+  supportArch:
+    - amd64
+    - arm64
+
+# Consume Olares-managed PostgreSQL (KMOS owns no database of its own). The
+# `vectors` extension is Olares' pgvector-equivalent (KMOS validates against
+# pgvector/pg16 in CI). Olares injects connection details as .Values.postgres.*.
+middleware:
+  postgres:
+    username: kmos
+    databases:
+      - name: kmos
+        extensions:
+          - vectors
+
+permission:
+  appData: true      # KMOS keeps app-scoped data (event log lives in Olares Postgres)
+  appCache: false
+  userData: []
+
+options:
+  dependencies:
+    - name: olares
+      version: '>=1.11.0-0'
+      type: system
+      mandatory: true
+  # KMOS surfaces Prometheus metrics at /metrics for Olares monitoring integration.
+  analytics:
+    enabled: false

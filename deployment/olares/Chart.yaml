@@ -1,0 +1,7 @@
+apiVersion: v2
+name: kmos
+description: KMOS — Knowledge & Media Operating System (Olares Application Chart)
+type: application
+# Chart version (bump on packaging changes); appVersion tracks the KMOS release.
+version: 1.0.0
+appVersion: "1.0.0-pc.1"
