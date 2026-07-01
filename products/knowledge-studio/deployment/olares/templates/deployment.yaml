@@ -38,6 +38,11 @@ spec:
             # explicit captionEndpoint (empty → YouTube asks for a pasted transcript).
             - name: KS_CAPTION_ENDPOINT
               value: {{ if .Values.captionService.enabled }}{{ printf "http://localhost:%v" .Values.captionService.port | quote }}{{ else }}{{ .Values.captionEndpoint | quote }}{{ end }}
+            # Richer concepts via Ollama (empty → offline reference extractor).
+            - name: OLLAMA_URL
+              value: {{ .Values.ollama.url | quote }}
+            - name: OLLAMA_MODEL
+              value: {{ .Values.ollama.model | quote }}
           livenessProbe:
             httpGet:
               path: /health

@@ -34,6 +34,14 @@ export interface LanguageDomainOptions {
   readonly registry: CapabilityRegistryService;
   readonly runtime: CapabilityRuntimeService;
   readonly now?: () => string;
+  /**
+   * Optional override for the concept-extraction capability. Defaults to the
+   * deterministic reference extractor. Injecting a provider-backed capability
+   * (e.g. an LLM adapter) keeps the domain provider-independent — the business
+   * work still runs inside a capability behind the contract; only the
+   * implementation changes (KMOS-9999 §9; ADR-KS-0002).
+   */
+  readonly extraction?: ReferenceCapability;
 }
 
 export interface ProcessTranscriptInput {
@@ -67,6 +75,7 @@ export class LanguageDomainService {
   private readonly runtime: CapabilityRuntimeService;
   private readonly workflow: WorkflowService;
   private readonly now: () => string;
+  private readonly extraction: ReferenceCapability;
   private correctionCapabilityId?: CanonicalId;
   private extractionCapabilityId?: CanonicalId;
   private translationCapabilityId?: CanonicalId;
@@ -77,6 +86,9 @@ export class LanguageDomainService {
     this.registry = opts.registry;
     this.runtime = opts.runtime;
     this.now = opts.now ?? (() => new Date().toISOString());
+    // Provider-independent: the reference extractor by default; an injected adapter
+    // (e.g. LLM-backed) otherwise. Business work stays inside the capability.
+    this.extraction = opts.extraction ?? (knowledgeExtraction as ReferenceCapability);
     this.workflow = new WorkflowService({ bus: this.bus, invoker: new RuntimeCapabilityInvoker(this.runtime), now: this.now });
   }
 
@@ -84,7 +96,7 @@ export class LanguageDomainService {
    * capabilities this domain composes. Idempotent per instance. */
   async setup(): Promise<void> {
     this.correctionCapabilityId = await this.register(transcriptCorrection as unknown as ReferenceCapability);
-    this.extractionCapabilityId = await this.register(knowledgeExtraction as ReferenceCapability);
+    this.extractionCapabilityId = await this.register(this.extraction);
     this.translationCapabilityId = await this.register(translation as ReferenceCapability);
   }
 

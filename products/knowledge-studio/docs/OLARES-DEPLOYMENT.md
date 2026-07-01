@@ -119,6 +119,22 @@ transcript. Captions-only (no Speaches) still works for videos that have caption
 `speachesUrl` empty. Provider-independent: point `speachesUrl` at any OpenAI-audio-compatible
 ASR server. See [`../services/caption-service/README.md`](../services/caption-service/README.md).
 
+## Richer concepts (Ollama)
+
+The offline reference extractor is basic. Point Knowledge Studio at your Olares **Ollama**
+for LLM-backed concepts + real definitions — provider-independent, behind the KMOS
+capability contract, with automatic fallback to the reference extractor on any failure (so
+processing never breaks). Set at install:
+
+```yaml
+ollama:
+  url: "http://<your-ollama-host>:11434"   # empty → reference extractor
+  model: "llama3.1"
+```
+
+Verify: the app boot log shows `concept extraction: Ollama @ …`; process the sample and the
+concepts/definitions are noticeably richer. See [ADR-KS-0002](adr/ADR-KS-0002-language-domain-capability-injection.md).
+
 ### Advanced — shared-database mode (one memory with KMOS)
 
 Set `databaseUrl` (in `values.yaml` before packaging, or via your Olares chart values) to

@@ -62,3 +62,10 @@ captionService:
   resources:
     requests: { cpu: 100m, memory: 128Mi }
     limits: { cpu: "1", memory: 512Mi }
+
+# Richer concepts: point at your Olares Ollama for LLM-backed concept extraction
+# (provider-independent, behind the KMOS capability contract; falls back to the reference
+# extractor on any failure). Empty url → the offline reference extractor.
+ollama:
+  url: ""            # e.g. http://ollama.<ns>:11434
+  model: "llama3.1"
