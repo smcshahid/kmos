@@ -1,0 +1,28 @@
+{
+  "name": "@kmos/podcast-studio-app",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Podcast Studio — the second flagship KMOS application. Drop a podcast (RSS/audio/YouTube/upload) in, leave with verifiable understanding: transcript, chapters, summaries, concepts, evidence, quotes, clips, reels, subtitles, translations, search, and a downloadable package. A thin product over KMOS (KCSI-02).",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@kmos/canonical-kernel": "*",
+    "@kmos/sdk": "*",
+    "@kmos/providers": "*",
+    "@kmos/media": "*",
+    "@kmos/language": "*",
+    "@kmos/reference-capabilities": "*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "start": "node --experimental-strip-types --import ../../tools/dev/register.mjs src/index.ts",
+    "test": "node --experimental-strip-types --import ../../tools/dev/register.mjs --test test/*.test.ts"
+  }
+}
