@@ -1,0 +1,12 @@
+# Non-secret KMOS configuration.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kmos-config
+  namespace: kmos
+  labels:
+    app.kubernetes.io/name: kmos
+data:
+  # HTTP server port. Matches PORT default (8080) in
+  # applications/api-server/src/index.ts.
+  PORT: "8080"

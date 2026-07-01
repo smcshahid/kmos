@@ -1,0 +1,148 @@
+# Default values for the KMOS Helm chart.
+# PREPARED, NOT VALIDATED against a live cluster in this environment.
+#
+# The KMOS api-server listens on PORT (default 8080) and serves:
+#   GET /health   -> liveness/readiness JSON ({ status: "ok", ... })
+#   GET /metrics  -> Prometheus text exposition
+#   GET /         -> reference UI
+# Verified against applications/api-server/src/index.ts and server.ts.
+
+# -- Number of api-server replicas. KMOS is a modular monolith; replicas share no
+# in-process state beyond what is rebuilt by event replay. In-memory projections
+# are per-pod today, so >1 replica is only safe once persistence is wired live
+# (see documentation/DEPLOYMENT-TARGETS.md). Default to 1.
+replicaCount: 1
+
+image:
+  # Replace with your published KMOS server image. The repository ships a
+  # build/verify/demo Dockerfile; a dedicated server image (CMD `npm run serve`)
+  # is expected to expose PORT 8080. See documentation/DEPLOYMENT-TARGETS.md.
+  repository: kmos
+  tag: "1.0.0-rc.1"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Container command override. The default image CMD runs the demo; to run the
+# server, override the command. Leave empty to use the image's own CMD.
+# Example: ["npm", "run", "serve"]
+command: []
+args: []
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# HTTP server port. Matches PORT default (8080) in index.ts.
+containerPort: 8080
+
+service:
+  type: ClusterIP
+  port: 80
+  # targetPort resolves to the container's http port by name.
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: kmos.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: kmos-tls
+  #    hosts:
+  #      - kmos.local
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+# Liveness / readiness probes target GET /health (verified path).
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Non-secret environment configuration -> rendered into a ConfigMap.
+config:
+  PORT: "8080"
+  # Add any other non-secret KMOS config here.
+
+# Extra plain env vars injected verbatim (non-secret).
+extraEnv: []
+#  - name: SOME_FLAG
+#    value: "true"
+
+# Database configuration. KMOS reads the Postgres connection string from
+# KMOS_DATABASE_URL. Postgres is EXTERNAL (managed/self-hosted), not bundled.
+database:
+  # If provided, the chart-managed Secret stores KMOS_DATABASE_URL from this DSN.
+  # Leave empty and set existingSecret instead to bring your own Secret.
+  url: ""
+  # Reference an existing Secret containing KMOS_DATABASE_URL (recommended for prod).
+  existingSecret: ""
+  existingSecretKey: "KMOS_DATABASE_URL"
+
+# Secret wiring. KMOS resolves secrets from the environment via EnvSecretResolver
+# with the KMOS_SECRET_ prefix (verified in
+# platform/configuration/src/infrastructure/env-secret-resolver.ts). A reference
+# such as "db/password" resolves to env var KMOS_SECRET_DB_PASSWORD.
+secrets:
+  # When true, the chart renders a Secret from `values` below. For production,
+  # prefer `existingSecret` (bring your own) or an external secrets operator.
+  create: true
+  # Reference an existing Secret whose keys are already KMOS_SECRET_* env names.
+  existingSecret: ""
+  # Map of KMOS_SECRET_* env var name -> value. Values are base64-encoded by the
+  # Secret template. DO NOT commit real secrets; override at install time.
+  values: {}
+  #  KMOS_SECRET_DB_PASSWORD: "change-me"
+  #  KMOS_SECRET_VAULT_DB_PASSWORD: "change-me"
+
+# Optional note: if you use an external secrets operator (External Secrets,
+# Vault, cloud KMS CSI), disable secrets.create and database.url, set
+# existingSecret references, and let the operator populate the Secret. The
+# templates only reference Secrets by name, so any operator that produces a
+# Secret with KMOS_SECRET_* keys works unchanged.
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

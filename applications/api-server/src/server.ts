@@ -45,7 +45,7 @@ function statusFor(err: unknown): number {
 
 export function buildRoutes(): Route[] {
   return [
-    route('GET', '/health', ({ platform }) => ({ status: 'ok', events: platform.bus.eventLog.size(), deadLetters: platform.bus.getDeadLetters().length })),
+    route('GET', '/health', async ({ platform }) => ({ status: 'ok', events: await platform.bus.eventLog.size(), deadLetters: platform.bus.getDeadLetters().length })),
 
     route('POST', '/organizations', async ({ platform, body }) => platform.identity.createOrganization(String(body?.name ?? 'Organization'))),
     route('POST', '/identities', async ({ platform, body }) => platform.identity.createIdentity({ kind: body?.kind ?? 'Human', displayName: String(body?.displayName ?? 'User'), organizationId: body?.organizationId })),

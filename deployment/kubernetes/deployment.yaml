@@ -1,0 +1,95 @@
+# KMOS api-server Deployment (modular monolith, single process).
+# PREPARED, NOT VALIDATED against a live cluster in this environment.
+#
+# Probes target GET /health and the port is 8080, both verified in
+# applications/api-server/src (index.ts / server.ts).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kmos
+  namespace: kmos
+  labels:
+    app.kubernetes.io/name: kmos
+    app.kubernetes.io/instance: kmos
+spec:
+  # In-memory projections are per-pod until persistence is wired live; keep 1
+  # replica unless you have validated shared persistence. See
+  # documentation/DEPLOYMENT-TARGETS.md.
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kmos
+      app.kubernetes.io/instance: kmos
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kmos
+        app.kubernetes.io/instance: kmos
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: kmos
+          # Replace with your published KMOS server image (CMD `npm run serve`,
+          # listening on PORT 8080). The repository's root Dockerfile is a
+          # build/verify/demo image; see documentation/DEPLOYMENT-TARGETS.md.
+          image: kmos:1.0.0-rc.1
+          imagePullPolicy: IfNotPresent
+          # Uncomment to run the server if the image CMD defaults to the demo:
+          # command: ["npm", "run", "serve"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: kmos-config
+          env:
+            - name: KMOS_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: kmos-secrets
+                  key: KMOS_DATABASE_URL
+            # Add KMOS_SECRET_* env vars sourced from the Secret as needed, e.g.:
+            # - name: KMOS_SECRET_DB_PASSWORD
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: kmos-secrets
+            #       key: KMOS_SECRET_DB_PASSWORD
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
