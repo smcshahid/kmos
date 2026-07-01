@@ -8,7 +8,7 @@ image:
   # Build+push from products/knowledge-studio/Dockerfile (see .github workflow).
   # NOT yet published — build and push before install, or point at your registry.
   repository: malikshahid85/knowledge-studio
-  tag: "1.0.0"
+  tag: "1.1.0"
   pullPolicy: IfNotPresent
 
 # SHARED-DATABASE MODE (recommended): point Knowledge Studio at the SAME PostgreSQL

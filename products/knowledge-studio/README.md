@@ -67,22 +67,39 @@ Knowledge Studio adds **orchestration + UX only** — no business logic, nothing
 
 ## Documentation
 
-See [`docs/`](docs/): Vision, Architecture, User Guide, Developer Guide, Deployment
-Guide, Operations Guide, Extension Guide, API Guide, Roadmap, Release Notes, and the
-independent review. Product-thinking foundations live in
-[`../lecture-explorer/docs`](../lecture-explorer/docs) (the research and discovery that
-led here).
+See [`docs/`](docs/): [Vision](docs/VISION.md), [Architecture](docs/ARCHITECTURE.md),
+[User Guide](docs/USER-GUIDE.md), [Developer Guide](docs/DEVELOPER-GUIDE.md),
+[API Guide](docs/API-GUIDE.md), [Deployment](docs/DEPLOYMENT-GUIDE.md) &
+[Operations](docs/OPERATIONS-GUIDE.md) guides, [Extension Guide](docs/EXTENSION-GUIDE.md),
+[Roadmap](docs/ROADMAP.md), [Release Notes](docs/RELEASE-NOTES.md), and the
+[product review](docs/INDEPENDENT-REVIEW.md).
 
-## Honest scope (V1)
+**Operations (v1.1):** [Olares Deployment runbook](docs/OLARES-DEPLOYMENT.md) ·
+[Operational Validation report](docs/OPERATIONAL-VALIDATION.md) ·
+[Daily-Driver Assessment & independent review](docs/DAILY-DRIVER-ASSESSMENT.md).
+
+Product-thinking foundations live in [`../lecture-explorer/docs`](../lecture-explorer/docs)
+(the research and discovery that led here). Deployment assets:
+[`deployment/olares/`](deployment/olares).
+
+## Honest scope
 
 The **verifiable-knowledge core runs fully offline** on deterministic reference
-capabilities, so you can try everything now. Three capabilities need external infra and
-are **architected behind KMOS contracts, reported honestly in the pipeline UI**, and
-documented in the Deployment Guide:
+capabilities, so you can try everything now. With `KMOS_DATABASE_URL` set, the full
+experience is **durable across restarts** (proven against real PostgreSQL). Remaining
+external-infra capabilities are **architected behind KMOS contracts, reported honestly in
+the pipeline UI**:
 
-- **YouTube download** → a `yt-dlp` capability (offline, you paste the transcript).
-- **Speech recognition** → a Whisper/Speaches capability (offline, transcript supplied).
-- **Video clips / Reels** → an `ffmpeg` capability (V1 defines the clip model; rendering
-  is deferred). The architecture leaves no dead ends for these or future content types.
+- **YouTube captions / speech recognition** → a provider-independent HTTP capability
+  (`KS_CAPTION_ENDPOINT`, e.g. yt-dlp + Whisper/Speaches). Set it and YouTube processes
+  end-to-end; absent, you paste the transcript and the pipeline says so.
+- **Richer concept extraction** → connect an Ollama/hosted-LLM capability (same contract)
+  for better concepts than the offline reference extractor.
+- **Video clips / Reels** → an `ffmpeg` capability (clip model defined; rendering deferred).
 
-Status: **V1 — working, tested, reviewed.** See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+The live install on your Olares is a documented, verifiable handoff — see the
+[Olares Deployment runbook](docs/OLARES-DEPLOYMENT.md); nothing here claims a deployment
+that hasn't been run on your cluster.
+
+Status: **v1.1 — daily-driver: durable, deployable, reliable; tested and reviewed.** See
+[`docs/ROADMAP.md`](docs/ROADMAP.md).
