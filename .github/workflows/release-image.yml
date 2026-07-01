@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Resolve image tag
+      - name: Resolve image tag + lowercase namespace
         id: meta
         run: |
           if [ -n "${{ github.event.inputs.tag }}" ]; then
@@ -32,6 +32,8 @@ jobs:
           else
             echo "tag=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           fi
+          # Docker repository names must be lowercase; the login is case-insensitive.
+          echo "ns=$(printf '%s' '${{ secrets.DOCKERHUB_USERNAME }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Fail early if Docker Hub secrets are missing
         run: |
@@ -55,10 +57,10 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/kmos:${{ steps.meta.outputs.tag }}
-            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/kmos:latest
+            docker.io/${{ steps.meta.outputs.ns }}/kmos:${{ steps.meta.outputs.tag }}
+            docker.io/${{ steps.meta.outputs.ns }}/kmos:latest
 
       - name: Summary
         run: |
-          echo "Pushed: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/kmos:${{ steps.meta.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pushed: docker.io/${{ steps.meta.outputs.ns }}/kmos:${{ steps.meta.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
           echo "Also tagged: latest" >> "$GITHUB_STEP_SUMMARY"
