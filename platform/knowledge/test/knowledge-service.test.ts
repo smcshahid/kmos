@@ -14,6 +14,34 @@ function makeService(): KnowledgeService {
   return new KnowledgeService({ now: fixedNow });
 }
 
+test('read-model recovery: hydrate() rebuilds every repository from the durable log (restart-identical)', async () => {
+  const bus = new EventBus();
+  const s1 = new KnowledgeService({ bus, now: fixedNow });
+  const ko = await s1.createKnowledge({ category: 'Concept', canonicalName: 'Sincerity', definition: 'Purity of intention', primaryLanguage: 'en' });
+  await s1.addVocabulary(ko.id, { language: 'ar', preferredTerm: 'Ikhlas' });
+  const ko2 = await s1.createKnowledge({ category: 'Concept', canonicalName: 'Patience', definition: 'Endurance', primaryLanguage: 'en' });
+  const rel = await s1.createRelationship({ relation: 'Explains', sourceId: ko.id, targetId: ko2.id, confidence: 0.8 });
+  await s1.approve(ko.id); // lifecycle changes (append versions)
+
+  // A fresh instance on the SAME durable bus/log — simulates a process restart.
+  const s2 = new KnowledgeService({ bus, now: fixedNow });
+  assert.equal(s2.getKnowledge(ko.id), undefined, 'a fresh instance has empty repositories before hydrate');
+  await s2.hydrate();
+
+  // Object retrieval is identical after recovery — full body, not just the graph node.
+  const rebuilt = s2.getKnowledge(ko.id);
+  assert.ok(rebuilt, 'object retrievable after hydrate');
+  assert.equal(rebuilt!.body.definition, 'Purity of intention', 'full body recovered');
+  assert.equal(rebuilt!.lifecycle, 'Approved', 'lifecycle change recovered');
+  assert.deepEqual(s2.getKnowledge(ko.id), s1.getKnowledge(ko.id), 'head identical to pre-restart');
+  assert.equal(s2.getHistory(ko.id).length, s1.getHistory(ko.id).length, 'version history depth identical');
+  // Vocabulary, relationships, and the second concept all recovered.
+  assert.equal(s2.getVocabulary(ko.id).length, 1, 'vocabulary recovered');
+  assert.equal(s2.getVocabulary(ko.id)[0]!.body.preferredTerm, 'Ikhlas');
+  assert.equal(s2.getRelationship(rel.id)?.body.sourceId, ko.id, 'relationship recovered');
+  assert.ok(s2.getKnowledge(ko2.id), 'second concept recovered');
+});
+
 test('createKnowledge: creates a Draft/Created object with provenance and emits KnowledgeCreated (KMOS-0201)', async () => {
   const svc = makeService();
   const evidence = newCanonicalId('Asset');

@@ -32,6 +32,7 @@ import {
   newCanonicalId,
   replay,
   type CanonicalId,
+  type CanonicalObject,
   type CanonicalReference,
   type GovernanceMetadata,
   type LifecycleState,
@@ -213,6 +214,7 @@ export class KnowledgeService {
       category: ko.body.category,
       canonicalName: ko.body.canonicalName,
       node: nodeOf(ko),
+      object: ko,
     }, ko.organizationId);
     return ko;
   }
@@ -262,6 +264,7 @@ export class KnowledgeService {
       version: next.version,
       reason,
       node: nodeOf(next),
+      object: next,
     }, next.organizationId);
     return next;
   }
@@ -330,6 +333,7 @@ export class KnowledgeService {
       sourceId: input.sourceId,
       targetId: input.targetId,
       edge: edgeOf(rel),
+      object: rel,
     });
     return rel;
   }
@@ -359,6 +363,7 @@ export class KnowledgeService {
       version: next.version,
       reason,
       edge: edgeOf(next),
+      object: next,
     });
     return next;
   }
@@ -408,6 +413,7 @@ export class KnowledgeService {
       knowledgeId,
       language: input.language,
       preferredTerm: input.preferredTerm,
+      object: vocab,
     });
     return vocab;
   }
@@ -453,6 +459,7 @@ export class KnowledgeService {
       collectionId: collection.id,
       name,
       memberCount: memberIds.length,
+      object: collection,
     });
     return collection;
   }
@@ -487,15 +494,16 @@ export class KnowledgeService {
     };
     this.knowledge.appendVersion(next);
     if (to === 'Approved') {
-      await this.publish('KnowledgeApproved', id, { knowledgeId: id, version: next.version }, next.organizationId);
+      await this.publish('KnowledgeApproved', id, { knowledgeId: id, version: next.version, object: next }, next.organizationId);
     } else if (to === 'Archived') {
-      await this.publish('KnowledgeArchived', id, { knowledgeId: id, version: next.version }, next.organizationId);
+      await this.publish('KnowledgeArchived', id, { knowledgeId: id, version: next.version, object: next }, next.organizationId);
     } else {
       await this.publish('KnowledgeUpdated', id, {
         knowledgeId: id,
         version: next.version,
         lifecycle: to,
         node: nodeOf(next),
+        object: next,
       }, next.organizationId);
     }
     return next;
@@ -546,6 +554,42 @@ export class KnowledgeService {
   async buildGraphFromEvents(): Promise<KnowledgeGraph> {
     const { state } = await replay(this.bus.eventLog, graphProjection, { now: this.now });
     return graphFromState(state);
+  }
+
+  /**
+   * Read-model recovery (ADR-0011): rebuild every repository by replaying the
+   * durable event log. Each object-lifecycle event carries a full `object`
+   * snapshot; replaying them in append order reconstructs each object's head +
+   * version history identically to the original write sequence. Called once on
+   * boot when the platform is backed by a durable log, so object retrieval,
+   * history, and vocabulary behave identically before and after a restart.
+   */
+  async hydrate(): Promise<void> {
+    for (const stored of await this.bus.eventLog.read(1)) {
+      const snap = (stored.event.payload as { object?: CanonicalObject }).object;
+      if (snap === undefined) continue;
+      switch (snap.type) {
+        case 'Concept':
+        case 'KnowledgeObject':
+          this.rehydrate(this.knowledge, snap as KnowledgeObject);
+          break;
+        case 'Relationship':
+          this.rehydrate(this.relationships, snap as RelationshipObject);
+          break;
+        case 'Vocabulary':
+          this.rehydrate(this.vocabulary, snap as VocabularyObject);
+          break;
+        case 'Collection':
+          this.rehydrate(this.collections, snap as CollectionObject);
+          break;
+      }
+    }
+  }
+
+  /** Upsert a snapshot: first sighting of an id is a create, later ones append versions. */
+  private rehydrate<T extends CanonicalObject>(repo: VersionedRepository<T>, obj: T): void {
+    if (repo.head(obj.id) === undefined) repo.add(obj);
+    else repo.appendVersion(obj);
   }
 
   // --- Internal helpers --------------------------------------------------
