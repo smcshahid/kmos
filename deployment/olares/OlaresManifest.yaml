@@ -40,7 +40,7 @@ entrances:
     openMethod: default
 
 spec:
-  versionName: '1.0.0-pc.2'   # human-facing KMOS version (Production Candidate)
+  versionName: '1.0.0'   # human-facing KMOS version (General Availability)
   requiredMemory: 256Mi
   limitedMemory: 1Gi
   requiredCpu: 250m

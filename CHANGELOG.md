@@ -15,6 +15,28 @@ are asserted. Architecture Decision Records are under
 
 ---
 
+## [1.0.0] — 2026-07-01 (General Availability — single-node self-hosted / Olares)
+
+**KMOS v1.0 GA** for the single-node self-hosted (Olares) profile, certified in
+`engineering/review/19-GENERAL-AVAILABILITY-CERTIFICATION.md`. Licensed
+**proprietary — all rights reserved** (see `LICENSE`).
+
+### Added
+- **Read-model recovery (ADR-0011):** every service rebuilds its repositories from
+  the durable event log on boot (state-carried events + `hydrate()`), so object
+  retrieval, version history, lineage, governance, and authorization are IDENTICAL
+  across restarts — verified on the owner's real Olares (object detail stable across
+  restart cycles; event count 60→62→64) and locally over multiple docker-compose
+  restart cycles.
+- Proprietary `LICENSE`; `release-image` workflow publishing the public image
+  (`docker.io/malikshahid85/kmos:1.0.0`).
+
+### Certified scope (and limits)
+- **Single-node self-hosted only** (`replicas: 1`). Multi-replica HA, managed-cloud,
+  and high-scale profiles are **not** certified (v1.x; each needs its own evidence).
+- Known cosmetic: 2 inert index-lifecycle events accrue per restart (no query
+  impact). Recommended before production data: one `pg_dump` backup/restore drill.
+
 ## [1.0.0-pc.1] — 2026-07-01 (Production Candidate; validated on Olares)
 
 ### Added / Validated

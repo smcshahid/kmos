@@ -7,7 +7,7 @@
 image:
   # Published by .github/workflows/release-image.yml to Docker Hub (public).
   repository: malikshahid85/kmos
-  tag: "1.0.0-pc.2"
+  tag: "1.0.0"
   pullPolicy: IfNotPresent
 
 # Injected by Olares (postgres middleware). Placeholders for local rendering only.
