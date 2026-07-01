@@ -2,9 +2,11 @@
 
 _Last updated: 2026-06-30_
 
-## Status: PRODUCTION CANDIDATE 1.0.0-pc.1 + durable-persistence proven. CRIT-1 + CRIT-2 resolved. Olares = container-validated, package-prepared. NOT yet GA — see engineering/review/17-OLARES-DEPLOYMENT-REPORT.md.
+## Status: PRODUCTION CANDIDATE 1.0.0-pc.1 — VALIDATED on real Olares. CRIT-1 + CRIT-2 resolved. NOT yet GA — see engineering/review/18-OLARES-DEPLOYMENT-VALIDATION-REPORT.md.
 
-**Olares program (review/17):** the server now persists the canonical event log to real PostgreSQL (KMOS_DATABASE_URL) — VERIFIED via docker-compose that 3 knowledge writes survive a container restart + search recovers from the log. Olares Application Chart (deployment/olares/) prepared but NOT installed on a real Olares (none available here). Next: guided real-Olares install (via Olares Studio) + read-model persistence (removes replicas=1).
+**Olares deployment VALIDATED (review/18, ADR-0010):** KMOS installed on a real Olares instance via the Olares Application Chart; Olares provisioned PostgreSQL; the full workflow ran end-to-end; the durable event log SURVIVED an app restart (77→79 events). Image published to public Docker Hub (release-image.yml). The biggest operational gap (in-memory only) is closed with evidence on the real target.
+
+**THE final pre-GA engineering blocker:** repository-backed READ-MODEL RECOVERY on boot — object detail (GET /knowledge/:id) is not rebuilt from the durable log on restart (search + event log DO recover). Closing it removes replicas=1 and makes restarts transparent. Then: LICENSE (owner) + a pg_dump backup/restore drill on Olares → GA for the single-node self-hosted profile is supportable. IdP-attribution bridge, tracing, HA = v1.x.
 
 
 CRIT-1 (async EventLog, ADR-0009) and CRIT-2 (pervasive attribution via ambient CallContext) are resolved with tests; EventLog contract passes against REAL Postgres in CI. Secrets (EnvSecretResolver) + enforcing composition scaffolded behind ports. Full governance/ops/deployment/SDK docs; Helm/K8s prepared (not validated); CHANGELOG; versions consistent at 1.0.0-pc.1. 224/225 tests pass (1 real-PG CI-only); fitness 0; CI green (static + tests + real-Postgres).

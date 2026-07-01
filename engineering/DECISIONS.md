@@ -49,6 +49,12 @@ PROPOSED — awaiting human approval · ACCEPTED — confirmed · SUPERSEDED
 **Decision (KEP-D1/D2):** Make `EventLog` + `replay()` async; `bus.publish` awaits append. Adopt the **await-everywhere** contract — every emit path awaits publication; fire-and-forget is banned by fitness rule (5), with one justified constructor exemption. `InMemoryEventLog` and `PostgresEventLog` implement the same async port (`AsyncEventLog` → deprecated alias). Land atomically, gated by green tsc + tests + a real-Postgres contract run. No persisted-format change; no data migration.
 **Consequence:** CRIT-1 + HIGH-1 closed with evidence (real-PG contract green in CI). Determinism strengthened (publication-ordering test). Adversarial review caught 6 production await gaps a stale incremental build had hidden — all fixed under a clean build. Ships `PgSqlClient` production wiring. Architecture Freeze v1.0 now eligible on this axis, pending human sign-off.
 
+## D-009 — Olares Application Chart as the reference self-hosted deployment
+**Status:** ACCEPTED (validated on real Olares). Recorded as ADR-0010.
+**Context:** KMOS needed a first real, reproducible self-hosted target. The server also didn't honour `KMOS_DATABASE_URL` (ran in-memory regardless) — fixed via `createPlatformFromEnv`.
+**Decision:** The Olares Application Chart (`deployment/olares/`, Helm + OlaresManifest) is the reference self-hosted deployment; KMOS owns its constitutional core and consumes Olares-managed PostgreSQL for the durable event log; image published to public Docker Hub by `release-image.yml`; `replicas: 1` until read-model persistence lands; the artifact ports to K8s/cloud by changing only the adapter.
+**Consequence:** Validated on real Olares (`mwayolares`) — install accepted, Postgres provisioned, full workflow ran, durable log survived an app restart (77→79 events). The largest operational gap (in-memory only) is closed with evidence. The final pre-GA engineering blocker is now precisely: repository-backed read-model recovery on boot (review/18 §5–§6).
+
 ---
 
 ## Decisions REQUIRING HUMAN APPROVAL (irreversible / product-level)
