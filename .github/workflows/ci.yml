@@ -9,10 +9,12 @@ jobs:
     name: Static checks (lint, fitness, typecheck)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - run: npm ci
+      - name: Dependency audit (supply chain)
+        run: npm audit --audit-level=critical
       - name: Lint
         run: npm run lint
       - name: Architecture fitness
@@ -25,8 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: static
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - name: Unit tests
@@ -61,12 +63,13 @@ jobs:
     env:
       KMOS_DATABASE_URL: postgres://kmos:kmos@localhost:5432/kmos
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - run: npm ci
-      # Runs the EventLog contract + persistence/replay integration against a REAL
-      # database once the async-kernel migration (KEP-001) lands. Until then this
-      # job exercises the contract against the in-memory + fake-SQL adapters.
-      - name: EventLog contract + persistence
+      # KEP-001 has landed: test:contract includes event-log-postgres.test.ts,
+      # which runs the reusable EventLog contract against this REAL PostgreSQL via
+      # PgSqlClient (KMOS_DATABASE_URL set above) — validating CRIT-1 end-to-end,
+      # not only the in-memory + fake-SQL adapters.
+      - name: EventLog contract + persistence (real Postgres)
         run: npm run test:contract
