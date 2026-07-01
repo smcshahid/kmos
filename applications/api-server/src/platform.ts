@@ -4,7 +4,7 @@
  * This is the in-process modular-monolith composition (KMOS-0200 §17); the same
  * wiring runs behind real persistence/transport adapters in production.
  */
-import { EventBus } from '@kmos/canonical-kernel';
+import { EventBus, type Authorizer } from '@kmos/canonical-kernel';
 import { createPlatformCatalog } from '@kmos/platform-catalog';
 import { IdentityService } from '@kmos/identity';
 import { AssetRegistryService } from '@kmos/assets';
@@ -39,8 +39,25 @@ export interface KmosPlatform {
   readonly explorer: ArchiveExplorer;
 }
 
-export function createPlatform(): KmosPlatform {
-  const bus = new EventBus({ catalog: createPlatformCatalog() });
+export interface CreatePlatformOptions {
+  /**
+   * Run the bus in ENFORCING mode (CRIT-2): every published canonical fact MUST
+   * carry an acting `actorId`. Compose with `runWithContext({ actorId, … }, …)`
+   * at the request boundary (see the auth seam in the Security guide) so each
+   * operation is attributed. Default `false` keeps the reference/demo composition
+   * non-enforcing and backward compatible.
+   */
+  readonly enforce?: boolean;
+  /** Optional policy decision point consulted before publication (KMOS-0190). */
+  readonly authorizer?: Authorizer;
+}
+
+export function createPlatform(options: CreatePlatformOptions = {}): KmosPlatform {
+  const bus = new EventBus({
+    catalog: createPlatformCatalog(),
+    ...(options.enforce ? { requireActor: true } : {}),
+    ...(options.authorizer ? { authorizer: options.authorizer } : {}),
+  });
   const identity = new IdentityService({ bus });
   const assets = new AssetRegistryService({ bus });
   const knowledge = new KnowledgeService({ bus });

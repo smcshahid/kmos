@@ -7,4 +7,5 @@ export * from './domain/secret-resolver.js';
 export * from './domain/configuration-catalog.js';
 export * from './infrastructure/in-memory-repository.js';
 export * from './infrastructure/echo-secret-resolver.js';
+export * from './infrastructure/env-secret-resolver.js';
 export * from './application/configuration-service.js';
