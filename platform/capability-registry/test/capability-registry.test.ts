@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { EventBus } from '@kmos/canonical-kernel';
 import { findCycle } from '../src/index.js';
 import { CapabilityRegistryService } from '../src/index.js';
 
@@ -51,6 +52,42 @@ test('unknown dependency rejected', async () => {
   await assert.rejects(
     () => reg.registerCapability({ name: 'X', ownerDomain: 'D', businessPurpose: 'x', version: '1.0.0', contract, dependencies: ['kmos:Capability:00000000-0000-4000-8000-000000000000'] }),
     /Unknown dependency/,
+  );
+});
+
+test('read-model recovery: a fresh registry rebuilds capabilities + manifests + certifications from the durable log', async () => {
+  const bus = new EventBus();
+
+  const s1 = new CapabilityRegistryService({ now: fixedNow, bus });
+  const cap = await s1.registerCapability({ name: 'Translate', ownerDomain: 'Language', businessPurpose: 'x', version: '1.0.0', inputs: ['Asset'], outputs: ['Transcript'], contract });
+  await s1.registerVersion(cap.id, { version: '1.1.0', contract });
+  await s1.certify(cap.id, '1.1.0', 'Production', 'governance');
+
+  // A fresh registry on the SAME bus starts empty until it hydrates.
+  const s2 = new CapabilityRegistryService({ now: fixedNow, bus });
+  assert.equal(s2.getCapability(cap.id), undefined, 'empty before hydrate');
+  assert.equal(s2.getManifest(cap.id), undefined, 'empty before hydrate');
+  assert.equal(s2.getCertificationHistory(cap.id).length, 0, 'empty before hydrate');
+
+  await s2.hydrate();
+
+  // Capability head (currentVersion advanced + certification) recovers.
+  assert.deepEqual(s2.getCapability(cap.id), s1.getCapability(cap.id));
+
+  // Manifest versions + contracts recover identically.
+  assert.deepEqual(s2.getVersions(cap.id), s1.getVersions(cap.id));
+  assert.deepEqual(s2.getVersions(cap.id), ['1.0.0', '1.1.0']);
+  assert.deepEqual(s2.getManifest(cap.id), s1.getManifest(cap.id));
+  assert.deepEqual(s2.getManifest(cap.id, '1.0.0'), s1.getManifest(cap.id, '1.0.0'));
+  assert.deepEqual(s2.getContract(cap.id), s1.getContract(cap.id));
+
+  // Certification history recovers.
+  assert.deepEqual(s2.getCertificationHistory(cap.id), s1.getCertificationHistory(cap.id));
+
+  // Discovery (which depends on both capability head and manifests) recovers.
+  assert.deepEqual(
+    s2.discover({ ownerDomain: 'Language', minCertification: 'Verified' }).map((c) => c.id),
+    s1.discover({ ownerDomain: 'Language', minCertification: 'Verified' }).map((c) => c.id),
   );
 });
 

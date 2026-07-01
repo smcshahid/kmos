@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { EventBus } from '@kmos/canonical-kernel';
 import {
   WorkflowService,
   ManualTimerScheduler,
@@ -211,6 +212,106 @@ test('no business logic in the engine: ALL work happens through the invoker', as
   // execution failed rather than computing anything itself.
   assert.equal(exec.body.state, 'Failed');
   assert.match(exec.body.error ?? '', /No CapabilityInvoker/);
+});
+
+test('read-model recovery: fresh service on the same durable log rebuilds executions, definitions, and tasks (ADR-0011)', async () => {
+  // Shared durable-ish bus + a deterministic invoker so s1 and s2 agree.
+  const bus = new EventBus({ catalog: createWorkflowCatalog() });
+  const invoker = new FakeInvoker({
+    'cap:transcribe': { transcript: 'hello world' },
+    'cap:publish': { url: 'https://example/x' },
+    'cap:s1': { a: 1 },
+    'cap:s2': { b: 2 },
+  });
+
+  const s1 = new WorkflowService({ bus, invoker, now: fixedNow });
+
+  // (a) A workflow that goes through Waiting via a human task, then completes.
+  const reviewDef = await s1.registerWorkflow({
+    name: 'review',
+    ownerDomain: 'media',
+    businessPurpose: 'review then publish',
+    steps: [
+      { id: 'review', kind: 'humanTask', role: 'editor', description: 'review transcript' },
+      { id: 'publish', kind: 'activity', capabilityRef: 'cap:publish' },
+    ],
+  });
+  let reviewExec = await s1.start(reviewDef.id, { audioRef: 'kmos:Asset:abc' });
+  assert.equal(reviewExec.body.state, 'Waiting');
+  const humanTask = s1.getHumanTasks(reviewExec.id)[0]!;
+  reviewExec = await s1.completeHumanTask(humanTask.id, { approved: true });
+  assert.equal(reviewExec.body.state, 'Completed');
+
+  // (b) A saga that fails and compensates completed steps.
+  const failingInvoker = new FakeInvoker({ 'cap:s1': { a: 1 }, 'cap:s2': { b: 2 } }, 'cap:s3');
+  const s1b = new WorkflowService({ bus, invoker: failingInvoker, now: fixedNow });
+  const sagaDef = await s1b.registerWorkflow({
+    name: 'saga',
+    ownerDomain: 'd',
+    businessPurpose: 'p',
+    steps: [
+      { id: 's1', kind: 'activity', capabilityRef: 'cap:s1', compensateWith: 'c1' },
+      { id: 's2', kind: 'activity', capabilityRef: 'cap:s2', compensateWith: 'c2' },
+      { id: 's3', kind: 'activity', capabilityRef: 'cap:s3' },
+      { id: 'c1', kind: 'compensation', capabilityRef: 'cap:undo1' },
+      { id: 'c2', kind: 'compensation', capabilityRef: 'cap:undo2' },
+    ],
+  });
+  const sagaExec = await s1b.start(sagaDef.id);
+  assert.equal(sagaExec.body.state, 'Compensated');
+
+  // FRESH service on the SAME bus + invoker: empty before hydrate.
+  const s2 = new WorkflowService({ bus, invoker, now: fixedNow });
+  assert.equal(s2.getExecution(reviewExec.id), undefined, 'no execution before hydrate');
+  assert.equal(s2.getWorkflow(reviewDef.id), undefined, 'no definition before hydrate');
+  assert.equal(s2.getHumanTasks(reviewExec.id).length, 0, 'no tasks before hydrate');
+
+  await s2.hydrate();
+
+  // Definitions rebuilt identically.
+  assert.deepEqual(s2.getWorkflow(reviewDef.id), s1.getWorkflow(reviewDef.id));
+  assert.deepEqual(s2.getWorkflow(sagaDef.id), s1b.getWorkflow(sagaDef.id));
+
+  // Executions rebuilt to the SAME final head (state + stepResults + cursor).
+  assert.deepEqual(s2.getExecution(reviewExec.id), s1.getExecution(reviewExec.id));
+  assert.equal(s2.getExecution(reviewExec.id)!.body.state, 'Completed');
+  assert.deepEqual(
+    s2.getExecution(reviewExec.id)!.body.stepResults,
+    reviewExec.body.stepResults,
+  );
+
+  assert.deepEqual(s2.getExecution(sagaExec.id), s1b.getExecution(sagaExec.id));
+  assert.equal(s2.getExecution(sagaExec.id)!.body.state, 'Compensated');
+
+  // Tasks rebuilt (Completed status carried through the log).
+  assert.deepEqual(s2.getHumanTasks(reviewExec.id), s1.getHumanTasks(reviewExec.id));
+  assert.equal(s2.getHumanTasks(reviewExec.id)[0]!.body.status, 'Completed');
+  assert.deepEqual(s2.getApprovalTasks(reviewExec.id), s1.getApprovalTasks(reviewExec.id));
+});
+
+test('read-model recovery: approval task Waiting state rebuilds after restart', async () => {
+  const bus = new EventBus({ catalog: createWorkflowCatalog() });
+  const invoker = new FakeInvoker({ 'cap:final': { ok: true } });
+  const s1 = new WorkflowService({ bus, invoker, now: fixedNow });
+  const def = await s1.registerWorkflow({
+    name: 'appr',
+    ownerDomain: 'd',
+    businessPurpose: 'p',
+    steps: [
+      { id: 'gate', kind: 'approvalTask', approver: 'legal' },
+      { id: 'final', kind: 'activity', capabilityRef: 'cap:final' },
+    ],
+  });
+  const exec = await s1.start(def.id);
+  assert.equal(exec.body.state, 'Waiting');
+
+  // Restart while the execution is still Waiting on the approval task.
+  const s2 = new WorkflowService({ bus, invoker, now: fixedNow });
+  await s2.hydrate();
+  assert.deepEqual(s2.getExecution(exec.id), s1.getExecution(exec.id));
+  assert.equal(s2.getExecution(exec.id)!.body.state, 'Waiting');
+  assert.deepEqual(s2.getApprovalTasks(exec.id), s1.getApprovalTasks(exec.id));
+  assert.equal(s2.getApprovalTasks(exec.id)[0]!.body.status, 'Open');
 });
 
 test('createWorkflowCatalog registers events the kernel seed omits', () => {

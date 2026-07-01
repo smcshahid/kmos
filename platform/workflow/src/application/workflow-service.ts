@@ -19,6 +19,7 @@ import {
   KmosError,
   type CanonicalId,
   type CanonicalEvent,
+  type CanonicalObject,
   type EventGovernance,
 } from '@kmos/canonical-kernel';
 import {
@@ -125,7 +126,7 @@ export class WorkflowService {
       },
     });
     this.definitions.put(def);
-    await this.publish('WorkflowRegistered', id, { workflowId: id, name: input.name, version });
+    await this.publish('WorkflowRegistered', id, { workflowId: id, name: input.name, version, object: def });
     return def;
   }
 
@@ -159,7 +160,7 @@ export class WorkflowService {
     });
     this.executions.put(exec);
     exec = this.transition(exec, 'Running');
-    await this.publish('WorkflowStarted', id, { workflowId, executionId: id });
+    await this.publish('WorkflowStarted', id, { workflowId, executionId: id, object: exec });
     return this.drive(exec);
   }
 
@@ -195,6 +196,7 @@ export class WorkflowService {
       await this.publish('WorkflowCompleted', exec.id, {
         workflowId: exec.body.workflowId,
         executionId: exec.id,
+        object: exec,
       });
     }
     return this.requireExecution(exec.id);
@@ -280,12 +282,15 @@ export class WorkflowService {
       },
     });
     this.humanTasks.put(task);
-    this.executions.put(this.transition(exec, 'Waiting', { waitingFor: id }));
+    const waiting = this.transition(exec, 'Waiting', { waitingFor: id });
+    this.executions.put(waiting);
     await this.publish('HumanTaskCreated', exec.id, {
       executionId: exec.id,
       taskId: id,
       stepId: step.id,
       role: step.role,
+      object: task,
+      execution: waiting,
     });
   }
 
@@ -296,10 +301,11 @@ export class WorkflowService {
     if (task.body.status === 'Completed') {
       throw new KmosError(`Human task already completed: ${taskId}`, { category: 'Conflict', code: 'workflow.humantask.completed', subject: taskId });
     }
-    this.humanTasks.put({ ...task, version: task.version + 1, updatedAt: this.now(), body: { ...task.body, status: 'Completed', result } });
+    const completedTask: HumanTaskObject = { ...task, version: task.version + 1, updatedAt: this.now(), body: { ...task.body, status: 'Completed', result } };
+    this.humanTasks.put(completedTask);
     let exec = this.requireExecution(task.body.executionId);
     exec = this.transition(exec, 'Running', { clearWaiting: true });
-    await this.recordStep(exec.id, { stepId: task.body.stepId, kind: 'humanTask', output: result }, 'HumanTaskCompleted', { taskId, result });
+    await this.recordStep(exec.id, { stepId: task.body.stepId, kind: 'humanTask', output: result }, 'HumanTaskCompleted', { taskId, result, task: completedTask });
     return this.resume(this.advanceCursor(this.requireExecution(exec.id)));
   }
 
@@ -321,12 +327,15 @@ export class WorkflowService {
       },
     });
     this.approvalTasks.put(task);
-    this.executions.put(this.transition(exec, 'Waiting', { waitingFor: id }));
+    const waiting = this.transition(exec, 'Waiting', { waitingFor: id });
+    this.executions.put(waiting);
     await this.publish('ApprovalTaskCreated', exec.id, {
       executionId: exec.id,
       taskId: id,
       stepId: step.id,
       approver: step.approver,
+      object: task,
+      execution: waiting,
     });
   }
 
@@ -337,10 +346,11 @@ export class WorkflowService {
     if (task.body.status === 'Completed') {
       throw new KmosError(`Approval already completed: ${taskId}`, { category: 'Conflict', code: 'workflow.approval.completed', subject: taskId });
     }
-    this.approvalTasks.put({ ...task, version: task.version + 1, updatedAt: this.now(), body: { ...task.body, status: 'Completed', verdict } });
+    const completedTask: ApprovalTaskObject = { ...task, version: task.version + 1, updatedAt: this.now(), body: { ...task.body, status: 'Completed', verdict } };
+    this.approvalTasks.put(completedTask);
     let exec = this.requireExecution(task.body.executionId);
     exec = this.transition(exec, 'Running', { clearWaiting: true });
-    await this.recordStep(exec.id, { stepId: task.body.stepId, kind: 'approvalTask', output: verdict }, 'ApprovalTaskCompleted', { taskId, verdict });
+    await this.recordStep(exec.id, { stepId: task.body.stepId, kind: 'approvalTask', output: verdict }, 'ApprovalTaskCompleted', { taskId, verdict, task: completedTask });
     if (verdict === 'Rejected') {
       return this.compensate(this.requireExecution(exec.id), `Approval rejected: ${taskId}`);
     }
@@ -396,21 +406,21 @@ export class WorkflowService {
       throw new KmosError(`Execution not cancellable in state ${exec.body.state}`, { category: 'Conflict', code: 'workflow.cancel.invalid_state', subject: executionId });
     }
     exec = this.transition(exec, 'Cancelled', { clearWaiting: true });
-    await this.publish('WorkflowCancelled', executionId, { executionId, workflowId: exec.body.workflowId });
+    await this.publish('WorkflowCancelled', executionId, { executionId, workflowId: exec.body.workflowId, object: exec });
     return exec;
   }
 
   async pause(executionId: CanonicalId): Promise<WorkflowExecutionObject> {
     let exec = this.requireExecution(executionId);
     exec = this.transition(exec, 'Paused');
-    await this.publish('WorkflowPaused', executionId, { executionId });
+    await this.publish('WorkflowPaused', executionId, { executionId, object: exec });
     return exec;
   }
 
   async resumePaused(executionId: CanonicalId): Promise<WorkflowExecutionObject> {
     let exec = this.requireExecution(executionId);
     exec = this.transition(exec, 'Running');
-    await this.publish('WorkflowResumed', executionId, { executionId });
+    await this.publish('WorkflowResumed', executionId, { executionId, object: exec });
     return this.resume(exec);
   }
 
@@ -434,31 +444,30 @@ export class WorkflowService {
       }
     }
     const planId = newCanonicalId('CompensationPlan');
-    this.compensationPlans.put(
-      createCanonicalObject<CompensationPlanObject['body']>({
-        id: planId,
-        type: 'CompensationPlan',
-        schemaVersion: '1.0',
-        owner: 'WorkflowService',
-        lifecycle: 'Active',
-        now: this.now(),
-        body: { executionId: exec.id, actions },
-      }),
-    );
-    await this.publish('CompensationStarted', exec.id, { executionId: exec.id, planId, reason, actionCount: actions.length });
+    const plan = createCanonicalObject<CompensationPlanObject['body']>({
+      id: planId,
+      type: 'CompensationPlan',
+      schemaVersion: '1.0',
+      owner: 'WorkflowService',
+      lifecycle: 'Active',
+      now: this.now(),
+      body: { executionId: exec.id, actions },
+    });
+    this.compensationPlans.put(plan);
+    await this.publish('CompensationStarted', exec.id, { executionId: exec.id, planId, reason, actionCount: actions.length, object: plan });
     for (const action of actions) {
       await this.invoke(this.requireExecution(exec.id), `compensate:${action.forStepId}`, action.capabilityRef, action.input);
     }
     const updated = this.transition(this.requireExecution(exec.id), 'Compensated', { clearWaiting: true });
     await this.publish('CompensationCompleted', exec.id, { executionId: exec.id, planId });
-    await this.publish('WorkflowCompensated', exec.id, { executionId: exec.id });
+    await this.publish('WorkflowCompensated', exec.id, { executionId: exec.id, object: updated });
     return updated;
   }
 
   private async fail(exec: WorkflowExecutionObject, err: unknown): Promise<WorkflowExecutionObject> {
     const message = err instanceof Error ? err.message : String(err);
     const failed = this.transition(this.requireExecution(exec.id), 'Failed', { error: message });
-    await this.publish('WorkflowFailed', failed.id, { executionId: failed.id, workflowId: failed.body.workflowId, error: message });
+    await this.publish('WorkflowFailed', failed.id, { executionId: failed.id, workflowId: failed.body.workflowId, error: message, object: failed });
     // Saga: if any completed step has a compensation, roll back in reverse order.
     if (failed.body.completedSteps.length > 0 && this.hasCompensations(failed)) {
       return this.compensate(failed, message);
@@ -484,6 +493,58 @@ export class WorkflowService {
   async reconstructExecution(executionId: CanonicalId): Promise<ExecutionState> {
     const projection = executionProjection(executionId);
     return (await replay(this.bus.eventLog, projection, { now: this.now })).state;
+  }
+
+  /**
+   * Read-model recovery (ADR-0011): rebuild the in-memory repositories
+   * (definitions, executions, human/approval tasks) by replaying the durable
+   * event log. Every state-carrying event embeds a full canonical `object`
+   * snapshot (and task/approval events additionally embed the current
+   * `execution` snapshot when a Waiting transition has no event of its own).
+   * Repositories are put-by-id, so replaying the snapshots in append order —
+   * latest-wins — reconstructs each object's final head identically to the
+   * original write sequence. Called once on boot when the platform is backed by
+   * a durable log, so getExecution/getWorkflow/getHumanTasks/getApprovalTasks
+   * behave identically before and after a restart. getExecutionHistory reads the
+   * (already durable) event log directly and needs no rehydration.
+   */
+  async hydrate(): Promise<void> {
+    for (const stored of await this.bus.eventLog.read(1)) {
+      const payload = stored.event.payload as {
+        object?: CanonicalObject;
+        execution?: CanonicalObject;
+        task?: CanonicalObject;
+      };
+      this.rehydrate(payload.object);
+      // A Waiting transition (human/approval task open) carries the execution
+      // snapshot alongside the created task; task-completion events carry the
+      // completed task alongside the execution snapshot. Rehydrate all so every
+      // head rebuilds regardless of which slot it travels in.
+      this.rehydrate(payload.execution);
+      this.rehydrate(payload.task);
+    }
+  }
+
+  /** Upsert a snapshot into the repository matching its canonical type. */
+  private rehydrate(snap: CanonicalObject | undefined): void {
+    if (snap === undefined) return;
+    switch (snap.type) {
+      case 'WorkflowDefinition':
+        this.definitions.put(snap as WorkflowDefinitionObject);
+        break;
+      case 'WorkflowExecution':
+        this.executions.put(snap as WorkflowExecutionObject);
+        break;
+      case 'HumanTask':
+        this.humanTasks.put(snap as HumanTaskObject);
+        break;
+      case 'ApprovalTask':
+        this.approvalTasks.put(snap as ApprovalTaskObject);
+        break;
+      case 'CompensationPlan':
+        this.compensationPlans.put(snap as CompensationPlanObject);
+        break;
+    }
   }
 
   // --- Internals ---
@@ -549,6 +610,7 @@ export class WorkflowService {
       stepId: result.stepId,
       kind: result.kind,
       output: result.output,
+      object: updated,
       ...extraPayload,
     });
   }

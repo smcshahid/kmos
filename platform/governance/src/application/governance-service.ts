@@ -26,6 +26,7 @@ import {
   createEvent,
   newCanonicalId,
   type CanonicalId,
+  type CanonicalObject,
 } from '@kmos/canonical-kernel';
 import { createGovernanceCatalog } from '../domain/catalog.js';
 import {
@@ -103,6 +104,16 @@ export class GovernanceService {
   private readonly bus: EventBus;
   private readonly repos: GovernanceRepositories;
   private readonly now: () => string;
+  /**
+   * Per-operation buffers (read-model recovery, ADR-0011). Decisions and audits
+   * are append-only side records produced inside write methods that do NOT
+   * publish their own event; instead they are drained into the payload of the
+   * next `emit` so the durable log carries a snapshot of every queryable object.
+   * Replaying those snapshots on `hydrate` rebuilds the Decision and Audit repos
+   * identically to the original write sequence.
+   */
+  private pendingDecisions: Decision[] = [];
+  private pendingAudits: GovernanceAudit[] = [];
 
   constructor(options: GovernanceServiceOptions = {}) {
     // A dedicated catalog with the extra governance facts; the default kernel
@@ -140,7 +151,13 @@ export class GovernanceService {
     });
     this.repos.policies.putVersion(version);
     this.repos.policies.putPolicy(policy);
-    await this.emit('PolicyRegistered', policyId, { policyId, name: input.name, version: 1 });
+    await this.emit('PolicyRegistered', policyId, {
+      policyId,
+      name: input.name,
+      version: 1,
+      object: policy,
+      versionObject: version,
+    });
     return { policy, version };
   }
 
@@ -174,7 +191,12 @@ export class GovernanceService {
       },
     };
     this.repos.policies.putPolicy(updated);
-    await this.emit('PolicyVersionRegistered', policyId, { policyId, version: nextVersion });
+    await this.emit('PolicyVersionRegistered', policyId, {
+      policyId,
+      version: nextVersion,
+      object: updated,
+      versionObject: version,
+    });
     return version;
   }
 
@@ -264,6 +286,7 @@ export class GovernanceService {
       mode: input.mode,
       reviewers: input.reviewers,
       escalated: approval.body.escalated,
+      object: approval,
     });
     return approval;
   }
@@ -353,6 +376,7 @@ export class GovernanceService {
         subjectId: current.body.subjectId,
         reviewer,
         mode: current.body.mode,
+        object: updated,
       });
     } else if (state === 'Rejected') {
       this.recordDecision(
@@ -368,6 +392,7 @@ export class GovernanceService {
         subjectId: current.body.subjectId,
         reviewer,
         reason,
+        object: updated,
       });
     }
     return updated;
@@ -392,7 +417,7 @@ export class GovernanceService {
       now: at,
     });
     this.repos.reviews.put(review);
-    await this.emit('ReviewCreated', subjectId, { reviewId: review.id, subjectId, reviewer });
+    await this.emit('ReviewCreated', subjectId, { reviewId: review.id, subjectId, reviewer, object: review });
     return review;
   }
 
@@ -438,6 +463,7 @@ export class GovernanceService {
       subjectId: current.body.subjectId,
       conclusion,
       evidence,
+      object: updated,
     });
     return updated;
   }
@@ -467,6 +493,7 @@ export class GovernanceService {
       subjectId,
       level,
       authority,
+      object: cert,
     });
     return cert;
   }
@@ -510,6 +537,7 @@ export class GovernanceService {
       subjectId: current.body.subjectId,
       level: current.body.level,
       reason,
+      object: revoked,
     });
     return revoked;
   }
@@ -549,6 +577,7 @@ export class GovernanceService {
       subjectId,
       framework,
       result,
+      object: record,
     });
     return record;
   }
@@ -597,6 +626,7 @@ export class GovernanceService {
       level: input.level,
       inherentRisk,
       residualRisk,
+      object: assessment,
     });
     return assessment;
   }
@@ -644,6 +674,7 @@ export class GovernanceService {
       scope: input.scope,
       approver: input.approver,
       ...(expiresAt !== undefined ? { expiresAt } : {}),
+      object: exception,
     });
     return exception;
   }
@@ -673,7 +704,7 @@ export class GovernanceService {
       body: { ...current.body, state: 'Closed', closedAt: at, closeReason },
     };
     this.repos.exceptions.put(updated);
-    await this.emit('ExceptionClosed', exceptionId, { exceptionId, closeReason });
+    await this.emit('ExceptionClosed', exceptionId, { exceptionId, closeReason, object: updated });
     return updated;
   }
 
@@ -728,6 +759,72 @@ export class GovernanceService {
     return this.repos.audits.forSubject(subjectId);
   }
 
+  // --- Read-model recovery (ADR-0011) ------------------------------------
+
+  /**
+   * Rebuild every governance repository by replaying the durable event log. Each
+   * meaningful event carries a full `object` snapshot of the canonical object it
+   * created or updated (plus `versionObject` for policy events, and drained
+   * `decisions`/`audits` side records). Replaying the snapshots in append order
+   * reconstructs each repository IDENTICALLY to the original write sequence, using
+   * the SAME repository method the write path used:
+   *   - policies:       putPolicy (latest-wins) + putVersion per version snapshot
+   *   - approvals:      put (latest-wins; the terminal/initial snapshot is the head)
+   *   - reviews:        put (latest-wins)
+   *   - certifications: add (append-only history: grant then revoke rebuild history)
+   *   - compliance:     add (append-only per subject)
+   *   - risks:          add (append-only per subject)
+   *   - exceptions:     put (latest-wins)
+   *   - decisions:      add (append-only log)
+   *   - audits:         add (append-only, immutable log)
+   *
+   * Called once on boot when the platform is backed by a durable log, so every
+   * governance query behaves identically before and after a restart.
+   */
+  async hydrate(): Promise<void> {
+    for (const stored of await this.bus.eventLog.read(1)) {
+      const payload = stored.event.payload as {
+        object?: CanonicalObject;
+        versionObject?: PolicyVersion;
+        decisions?: readonly Decision[];
+        audits?: readonly GovernanceAudit[];
+      };
+      const obj = payload.object;
+      if (obj !== undefined) {
+        switch (obj.type) {
+          case 'Policy':
+            this.repos.policies.putPolicy(obj as Policy);
+            break;
+          case 'Approval':
+            this.repos.approvals.put(obj as Approval);
+            break;
+          case 'Review':
+            this.repos.reviews.put(obj as Review);
+            break;
+          case 'Certification':
+            this.repos.certifications.add(obj as Certification);
+            break;
+          case 'ComplianceRecord':
+            this.repos.compliance.add(obj as ComplianceRecord);
+            break;
+          case 'RiskAssessment':
+            this.repos.risks.add(obj as RiskAssessment);
+            break;
+          case 'Exception':
+            this.repos.exceptions.put(obj as Exception);
+            break;
+        }
+      }
+      // Policy versions travel alongside their policy (append-only per policy).
+      if (payload.versionObject !== undefined) {
+        this.repos.policies.putVersion(payload.versionObject);
+      }
+      // Append-only side records: rebuild in log order, mirroring the write path.
+      for (const decision of payload.decisions ?? []) this.repos.decisions.add(decision);
+      for (const audit of payload.audits ?? []) this.repos.audits.add(audit);
+    }
+  }
+
   // --- Internal helpers --------------------------------------------------
 
   private requirePolicy(policyId: CanonicalId): Policy {
@@ -772,6 +869,9 @@ export class GovernanceService {
       now: at,
     });
     this.repos.decisions.add(decision);
+    // Buffer for read-model recovery: drained into the next emitted event's
+    // payload so the durable log carries a snapshot of this Decision.
+    this.pendingDecisions.push(decision);
     // Every governance decision produces an immutable audit record.
     this.recordAudit(subjectId, decisionType, authority, outcome, reason, []);
     return decision;
@@ -798,21 +898,41 @@ export class GovernanceService {
       now: at,
     });
     this.repos.audits.add(audit);
+    // Buffer for read-model recovery: drained into the next emitted event's
+    // payload so the durable log carries a snapshot of this audit record.
+    this.pendingAudits.push(audit);
     return audit;
   }
 
-  /** Publish a canonical governance event onto the bus (validated by the catalog). */
+  /**
+   * Publish a canonical governance event onto the bus (validated by the catalog).
+   *
+   * Read-model recovery (ADR-0011): the event's `object` (and, for policy events,
+   * `versionObject`) snapshot is set by the caller. Here we additionally drain the
+   * pending Decision and audit buffers into the payload as `decisions`/`audits`,
+   * so every side record produced since the last emit is durably captured and can
+   * be replayed by `hydrate`. Draining is additive — existing payload fields and
+   * return values are untouched.
+   */
   private async emit(
     type: string,
     subjectId: CanonicalId,
     payload: Record<string, unknown>,
   ): Promise<void> {
+    const decisions = this.pendingDecisions;
+    const audits = this.pendingAudits;
+    this.pendingDecisions = [];
+    this.pendingAudits = [];
     const event = createEvent({
       type,
       schemaVersion: SCHEMA_VERSION,
       producer: PRODUCER,
       subjectId,
-      payload,
+      payload: {
+        ...payload,
+        ...(decisions.length > 0 ? { decisions } : {}),
+        ...(audits.length > 0 ? { audits } : {}),
+      },
       time: this.now(),
     });
     await this.bus.publish(event, { streamId: subjectId });

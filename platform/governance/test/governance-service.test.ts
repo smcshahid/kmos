@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newCanonicalId, type StoredEvent } from '@kmos/canonical-kernel';
-import { GovernanceService } from '../src/index.js';
+import { EventBus, newCanonicalId, type StoredEvent } from '@kmos/canonical-kernel';
+import { GovernanceService, createGovernanceCatalog } from '../src/index.js';
 
 const fixedNow = () => '2026-06-30T00:00:00.000Z';
 
@@ -274,4 +274,106 @@ test('Audit: every governance decision yields an immutable audit record', async 
     assert.ok(entry.body.recordedAt);
     assert.ok(entry.body.reason !== undefined);
   }
+});
+
+test('Recovery: a fresh service rebuilds every repo from the durable log (ADR-0011)', async () => {
+  // A SHARED, durable bus so a second service instance sees the same event log.
+  const bus = new EventBus({ catalog: createGovernanceCatalog() });
+
+  // s1 performs representative writes across every persisted object type.
+  const s1 = new GovernanceService({ bus, now: fixedNow });
+
+  // Policy + immutable version.
+  const { policy } = await s1.registerPolicy({
+    name: 'PublishGate',
+    description: 'Must be approved',
+    rules: [{ field: 'approved', operator: 'truthy' }],
+    authoredBy: 'alice',
+  });
+  await s1.registerPolicyVersion(policy.id, [{ field: 'approved', operator: 'truthy' }], 'bob');
+
+  // Approval requested then granted (mutated in place; final head = Granted).
+  const approvalSubject = newCanonicalId('Asset');
+  const approval = await s1.requestApproval({
+    subjectId: approvalSubject,
+    reviewers: ['alice'],
+    mode: 'Single',
+  });
+  await s1.grantApproval(approval.id, 'alice', 'looks good');
+
+  // Certification granted then revoked (append-only history: 2 records).
+  const certSubject = newCanonicalId('Capability');
+  const cert = await s1.grantCertification(certSubject, 'Gold', 'cert-authority');
+  await s1.revokeCertification(cert.id, 'cert-authority', 'deprecated');
+
+  // Review, compliance, risk, exception.
+  const reviewSubject = newCanonicalId('KnowledgeObject');
+  const review = await s1.createReview(reviewSubject, 'editor');
+  await s1.completeReview(review.id, 'Pass', ['source verified']);
+
+  const complianceSubject = newCanonicalId('Asset');
+  await s1.recordCompliance(complianceSubject, 'GDPR', 'Compliant', 'dpo', ['DPIA filed']);
+
+  const riskSubject = newCanonicalId('Workflow');
+  await s1.assessRisk({
+    subjectId: riskSubject,
+    level: 'High',
+    impact: 4,
+    likelihood: 3,
+    mitigation: 'controls',
+    assessedBy: 'risk-officer',
+  });
+
+  const exception = await s1.createException({
+    reason: 'temporary waiver',
+    approver: 'cto',
+    scope: 'asset:legacy',
+    durationMs: 86_400_000,
+  });
+  await s1.closeException(exception.id, 'migration complete');
+
+  // A FRESH service on the SAME bus starts with empty read models.
+  const s2 = new GovernanceService({ bus, now: fixedNow });
+  assert.equal(s2.getPolicy(policy.id), undefined, 'read model empty before hydrate');
+  assert.equal(s2.getApproval(approval.id), undefined);
+  assert.equal(s2.getCertificationHistory(certSubject).length, 0);
+  assert.equal(s2.getException(exception.id), undefined);
+  assert.equal(s2.getRiskAssessments(riskSubject).length, 0);
+  assert.equal(s2.getComplianceRecords(complianceSubject).length, 0);
+  assert.equal(s2.getDecisions(approvalSubject).length, 0);
+  assert.equal(s2.getAuditLog().length, 0);
+
+  // Rebuild every repository from the durable event log.
+  await s2.hydrate();
+
+  // Post-restart queries are IDENTICAL to the original service.
+  assert.deepEqual(s2.getPolicy(policy.id), s1.getPolicy(policy.id));
+  assert.deepEqual(s2.getPolicyVersions(policy.id), s1.getPolicyVersions(policy.id));
+  assert.equal(s2.getPolicyVersions(policy.id).length, 2);
+
+  assert.deepEqual(s2.getApproval(approval.id), s1.getApproval(approval.id));
+  assert.equal(s2.getApproval(approval.id)!.body.state, 'Granted');
+
+  assert.deepEqual(
+    s2.getCertificationHistory(certSubject),
+    s1.getCertificationHistory(certSubject),
+  );
+  assert.equal(s2.getCertificationHistory(certSubject).length, 2);
+  assert.equal(s2.getCurrentCertification(certSubject)!.body.state, 'Revoked');
+
+  assert.deepEqual(
+    s2.getComplianceRecords(complianceSubject),
+    s1.getComplianceRecords(complianceSubject),
+  );
+  assert.deepEqual(s2.getRiskAssessments(riskSubject), s1.getRiskAssessments(riskSubject));
+
+  assert.deepEqual(s2.getException(exception.id), s1.getException(exception.id));
+  assert.equal(s2.getException(exception.id)!.body.state, 'Closed');
+  assert.deepEqual(s2.listExceptions(), s1.listExceptions());
+
+  // Append-only side records (Decisions + immutable audit log) rebuild identically.
+  assert.deepEqual(s2.getDecisions(approvalSubject), s1.getDecisions(approvalSubject));
+  assert.deepEqual(s2.getDecisions(certSubject), s1.getDecisions(certSubject));
+  assert.equal(s2.getAuditLog().length, s1.getAuditLog().length);
+  assert.deepEqual(s2.getAuditTrail(certSubject), s1.getAuditTrail(certSubject));
 });

@@ -23,6 +23,7 @@ import {
   newCanonicalId,
   KmosError,
   type CanonicalId,
+  type CanonicalObject,
 } from '@kmos/canonical-kernel';
 import {
   isSecretReference,
@@ -106,6 +107,7 @@ export class ConfigurationService {
       setId: id,
       scope: input.scope,
       namespace: input.namespace,
+      object: set,
     });
     return set;
   }
@@ -167,12 +169,13 @@ export class ConfigurationService {
     this.versions.put(version);
 
     // Advance the set pointer to the new version (immutable history preserved).
-    this.sets.put({
+    const updatedSet: ConfigurationSetObject = {
       ...set,
       version: set.version + 1,
       updatedAt: now,
       body: { ...set.body, currentVersionId: version.id, versionCount: versionNumber },
-    });
+    };
+    this.sets.put(updatedSet);
 
     const payload: Record<string, unknown> = {
       setId,
@@ -180,6 +183,11 @@ export class ConfigurationService {
       versionNumber,
       reason: options.reason,
       keys: Object.keys(values),
+      // State-carried snapshots (read-model recovery, ADR-0011): the new
+      // immutable ConfigurationVersion plus the set head whose pointer now
+      // references it, so resolution rebuilds identically after a restart.
+      object: version,
+      objects: [updatedSet],
     };
     if (options.profile !== undefined) payload.profile = options.profile;
     await this.publish('ConfigurationUpdated', setId, payload);
@@ -217,7 +225,7 @@ export class ConfigurationService {
       body: { setId, name },
     });
     this.profiles.put(profile);
-    await this.publish('ConfigurationProfileChanged', setId, { setId, profile: name, change: 'registered' });
+    await this.publish('ConfigurationProfileChanged', setId, { setId, profile: name, change: 'registered', object: profile });
     return profile;
   }
 
@@ -260,6 +268,47 @@ export class ConfigurationService {
     }
 
     return effective;
+  }
+
+  // --- read-model recovery (ADR-0011) ---
+
+  /**
+   * Rebuild every repository backing a getter by replaying the durable event
+   * log. Each governed change carries a full `object` snapshot (and, on
+   * ConfigurationUpdated, the updated set head in `objects` so the
+   * currentVersionId pointer is restored). ConfigurationVersions are immutable
+   * and each has a unique id, so replaying appends them without clobbering
+   * history; the set head is latest-wins by id. After hydrate, set/version/
+   * profile retrieval and resolve() behave identically to before a restart.
+   * Idempotent. Called once on boot when backed by a durable log.
+   */
+  async hydrate(): Promise<void> {
+    for (const stored of await this.bus.eventLog.read(1)) {
+      const payload = stored.event.payload as {
+        object?: CanonicalObject;
+        objects?: readonly CanonicalObject[];
+      };
+      if (payload.object !== undefined) this.rehydrate(payload.object);
+      for (const extra of payload.objects ?? []) this.rehydrate(extra);
+    }
+  }
+
+  /** Upsert a snapshot into the repository that owns its canonical type. */
+  private rehydrate(obj: CanonicalObject): void {
+    switch (obj.type) {
+      case 'ConfigurationSet':
+        this.sets.put(obj as ConfigurationSetObject);
+        break;
+      case 'ConfigurationVersion':
+        this.versions.put(obj as ConfigurationVersionObject);
+        break;
+      case 'ConfigurationProfile':
+        this.profiles.put(obj as ConfigurationProfileObject);
+        break;
+      default:
+        // Unknown/foreign snapshot types are ignored (defensive).
+        break;
+    }
   }
 
   // ---- internals ----

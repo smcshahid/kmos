@@ -186,7 +186,7 @@ export class IdentityService {
     await this.emit(
       'IdentityCreated',
       identity.id,
-      { identityId: identity.id, kind: identity.body.kind, displayName: input.displayName },
+      { identityId: identity.id, kind: identity.body.kind, displayName: input.displayName, object: identity },
       input.organizationId,
       identity.id,
     );
@@ -237,7 +237,7 @@ export class IdentityService {
   async createOrganization(name: string): Promise<OrganizationObject> {
     const org = makeOrganization(name, this.now());
     this.organizations.put(org);
-    await this.emit('IdentityCreated', org.id, { organizationId: org.id, name }, org.id, org.id);
+    await this.emit('IdentityCreated', org.id, { organizationId: org.id, name, object: org }, org.id, org.id);
     return org;
   }
 
@@ -290,7 +290,13 @@ export class IdentityService {
       ...identity.body,
       roleIds: [...identity.body.roleIds, roleId],
     });
-    await this.emit('RoleAssigned', identityId, { identityId, roleId }, identity.organizationId, identityId);
+    await this.emit(
+      'RoleAssigned',
+      identityId,
+      { identityId, roleId, object: updated, objects: this.roleSnapshots(roleId) },
+      identity.organizationId,
+      identityId,
+    );
     return updated;
   }
 
@@ -301,8 +307,34 @@ export class IdentityService {
       ...identity.body,
       roleIds: identity.body.roleIds.filter((r) => r !== roleId),
     });
-    await this.emit('RoleAssigned', identityId, { identityId, roleId, revoked: true }, identity.organizationId, identityId);
+    await this.emit(
+      'RoleAssigned',
+      identityId,
+      { identityId, roleId, revoked: true, object: updated, objects: this.roleSnapshots(roleId) },
+      identity.organizationId,
+      identityId,
+    );
     return updated;
+  }
+
+  /**
+   * Snapshots needed to reconstruct authorization for a role reference: the Role
+   * itself plus every Permission it bundles. Role/Permission creation publishes
+   * no standalone canonical event (there is no such type in the catalog), so
+   * these queryable objects ride along on the RoleAssigned event that first
+   * references them, letting hydrate() rebuild the roles/permissions repos and
+   * keep authorization identical after a restart.
+   */
+  private roleSnapshots(roleId: CanonicalId): CanonicalObject[] {
+    const snaps: CanonicalObject[] = [];
+    const role = this.roles.get(roleId);
+    if (role === undefined) return snaps;
+    snaps.push(role);
+    for (const pid of role.body.permissionIds) {
+      const perm = this.permissions.get(pid);
+      if (perm !== undefined) snaps.push(perm);
+    }
+    return snaps;
   }
 
   // --- direct permission grants -------------------------------------------
@@ -315,7 +347,13 @@ export class IdentityService {
       ...identity.body,
       permissionIds: [...identity.body.permissionIds, permissionId],
     });
-    await this.emit('PermissionGranted', identityId, { identityId, permissionId }, identity.organizationId, identityId);
+    await this.emit(
+      'PermissionGranted',
+      identityId,
+      { identityId, permissionId, object: updated, objects: this.permissionSnapshots(permissionId) },
+      identity.organizationId,
+      identityId,
+    );
     return updated;
   }
 
@@ -326,8 +364,20 @@ export class IdentityService {
       ...identity.body,
       permissionIds: identity.body.permissionIds.filter((p) => p !== permissionId),
     });
-    await this.emit('PermissionGranted', identityId, { identityId, permissionId, revoked: true }, identity.organizationId, identityId);
+    await this.emit(
+      'PermissionGranted',
+      identityId,
+      { identityId, permissionId, revoked: true, object: updated, objects: this.permissionSnapshots(permissionId) },
+      identity.organizationId,
+      identityId,
+    );
     return updated;
+  }
+
+  /** Permission snapshot for the PermissionGranted event (see roleSnapshots). */
+  private permissionSnapshots(permissionId: CanonicalId): CanonicalObject[] {
+    const perm = this.permissions.get(permissionId);
+    return perm === undefined ? [] : [perm];
   }
 
   // --- delegation ----------------------------------------------------------
@@ -386,7 +436,7 @@ export class IdentityService {
     await this.emit(
       'DelegationCreated',
       delegation.id,
-      { delegationId: delegation.id, delegatingId, receivingId, scope: body.scope, expiresAt: expiresAtIso, reason },
+      { delegationId: delegation.id, delegatingId, receivingId, scope: body.scope, expiresAt: expiresAtIso, reason, object: delegation },
       receiver.organizationId,
       delegatingId,
     );
@@ -402,7 +452,7 @@ export class IdentityService {
       body: { ...d.body, revoked: true },
     };
     this.delegations.put(updated);
-    await this.emit('DelegationCreated', delegationId, { delegationId, revoked: true }, d.organizationId, d.body.delegatingId);
+    await this.emit('DelegationCreated', delegationId, { delegationId, revoked: true, object: updated }, d.organizationId, d.body.delegatingId);
     return updated;
   }
 
@@ -447,7 +497,7 @@ export class IdentityService {
     await this.emit(
       'AuthenticationSucceeded',
       identityId,
-      { identityId, sessionId: session.id, expiresAt },
+      { identityId, sessionId: session.id, expiresAt, object: session },
       identity.organizationId,
       identityId,
     );
@@ -532,6 +582,60 @@ export class IdentityService {
   /** Boolean authorization decision (KMOS-0206 §8). */
   authorize(query: AuthorizeQuery): boolean {
     return this.decide(query).allowed;
+  }
+
+  // --- read-model recovery (ADR-0011) --------------------------------------
+
+  /**
+   * Rebuild every repository backing a getter by replaying the durable event
+   * log. Each object-lifecycle event carries a full `object` snapshot (and, for
+   * RoleAssigned/PermissionGranted, additional `objects` for the referenced Role
+   * and its Permissions, which have no standalone creation event in the catalog).
+   * Replaying in append order upserts the latest state of each object into the
+   * correct repository (latest-wins `put`), so identity retrieval, sessions,
+   * delegations and — critically — authorization decisions are identical before
+   * and after a process restart. Idempotent: replaying twice yields the same
+   * state. Called once on boot when backed by a durable log.
+   */
+  async hydrate(): Promise<void> {
+    for (const stored of await this.bus.eventLog.read(1)) {
+      const payload = stored.event.payload as {
+        object?: CanonicalObject;
+        objects?: readonly CanonicalObject[];
+      };
+      if (payload.object !== undefined) this.rehydrate(payload.object);
+      for (const extra of payload.objects ?? []) this.rehydrate(extra);
+    }
+  }
+
+  /** Upsert a snapshot into the repository that owns its canonical type. */
+  private rehydrate(obj: CanonicalObject): void {
+    switch (obj.type) {
+      case 'Identity':
+        this.identities.put(obj as IdentityObject);
+        break;
+      case 'Organization':
+        this.organizations.put(obj as OrganizationObject);
+        break;
+      case 'Role':
+        this.roles.put(obj as RoleObject);
+        break;
+      case 'Permission': {
+        const perm = obj as PermissionObject;
+        this.permissions.put(perm);
+        this.permissionByName.set(perm.body.name, perm.id);
+        break;
+      }
+      case 'Delegation':
+        this.delegations.put(obj as DelegationObject);
+        break;
+      case 'Session':
+        this.sessions.put(obj as SessionObject);
+        break;
+      default:
+        // Unknown/foreign snapshot types are ignored (defensive).
+        break;
+    }
   }
 
   // --- introspection / audit ----------------------------------------------

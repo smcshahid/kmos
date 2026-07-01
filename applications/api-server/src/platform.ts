@@ -108,9 +108,19 @@ export async function createPlatformFromEnv(options: CreatePlatformOptions = {})
   const sql = new PgSqlClient(url);
   await sql.query(EVENTS_TABLE_DDL); // idempotent migration — safe on every boot
   const platform = wireServices(makeBus(new PostgresEventLog(sql), options));
-  // Recovery on boot: rebuild the search index from the durable log. rebuild()
-  // replays into a fresh store and emits a single IndexRebuilt (it does NOT
-  // re-emit per-document events), so it is safe to run on every start.
+  // Read-model recovery on boot (ADR-0011): rebuild every service's repositories
+  // from the durable event log so object retrieval, lineage, governance, and
+  // identity/authorization behave IDENTICALLY after a restart. Hydration writes
+  // directly to in-memory repositories from the events' object snapshots and does
+  // NOT re-publish, so no duplicate facts enter the log.
+  await Promise.all([
+    platform.knowledge.hydrate(),
+    platform.assets.hydrate(),
+    platform.governance.hydrate(),
+    platform.identity.hydrate(),
+    platform.registry.hydrate(),
+  ]);
+  // Rebuild the search projection from the durable log (single IndexRebuilt event).
   await platform.search.rebuild();
   return platform;
 }

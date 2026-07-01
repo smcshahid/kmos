@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import {
+  EventBus,
   isCanonicalId,
   objectTypeOf,
   type StoredEvent,
@@ -281,6 +282,72 @@ test('lifecycle transitions use canTransition and publish events (KMOS-0202 §19
     provenance: { origin: 'Ingested' },
   });
   await assert.rejects(() => svc.transitionLifecycle(fresh.id, 'Published'), /Illegal lifecycle transition/);
+});
+
+test('read-model recovery: a fresh service rebuilds asset/versions/provenance/lineage/evidence from the durable log', async () => {
+  const bus = new EventBus();
+
+  // s1 performs a representative sequence of writes on a shared bus.
+  const s1 = new AssetRegistryService({ now: fixedNow, bus });
+
+  const source = await s1.registerAsset({
+    assetType: 'Video',
+    mediaType: 'video/mp4',
+    displayName: 'source',
+    storageRef: ref('r/src'),
+    checksum: sha256('src'),
+    content: bytes('src'),
+    provenance: { origin: 'Ingested' },
+  });
+  const derived = await s1.registerAsset({
+    assetType: 'Transcript',
+    mediaType: 'text/plain',
+    displayName: 'derived',
+    storageRef: ref('r/d1'),
+    checksum: sha256('d1'),
+    content: bytes('d1'),
+    provenance: {
+      origin: 'DerivedByCapability',
+      sourceAssetIds: [source.id],
+      producingCapabilityId: 'kmos:Capability:dddddddd-dddd-dddd-dddd-dddddddddddd',
+    },
+  });
+  // A new immutable version (version chain depth > 1).
+  await s1.createVersion(derived.id, {
+    reason: 'fix',
+    checksum: sha256('d2'),
+    storageRef: ref('r/d2'),
+    content: bytes('d2'),
+  });
+  // Metadata + storage + integrity + lifecycle + evidence exercise every repo.
+  await s1.updateMetadata(derived.id, { description: 'a transcript', tags: ['x'] });
+  await s1.updateStorageReference(derived.id, ref('r/d2b'));
+  await s1.verifyIntegrity(derived.id);
+  await s1.archiveAsset(derived.id);
+  const pkg = await s1.generateEvidencePackage(derived.id);
+
+  // A fresh service on the SAME bus starts empty until it hydrates.
+  const s2 = new AssetRegistryService({ now: fixedNow, bus });
+  assert.throws(() => s2.getAsset(derived.id), /not found/, 'empty before hydrate');
+  assert.equal(s2.getEvidencePackage(pkg.id), undefined, 'empty before hydrate');
+
+  await s2.hydrate();
+
+  // Object retrieval is deep-equal to the original.
+  assert.deepEqual(s2.getAsset(derived.id), s1.getAsset(derived.id));
+  assert.deepEqual(s2.getAsset(source.id), s1.getAsset(source.id));
+  assert.deepEqual(s2.getProvenance(derived.id), s1.getProvenance(derived.id));
+
+  // Version history depth + contents recover identically.
+  assert.equal(s2.getVersionHistory(derived.id).length, 2);
+  assert.deepEqual(s2.getVersionHistory(derived.id), s1.getVersionHistory(derived.id));
+
+  // Lineage (derived + source parent edges) recovers.
+  assert.deepEqual(s2.getLineage(derived.id), s1.getLineage(derived.id));
+  assert.deepEqual(s2.getLineage(source.id), s1.getLineage(source.id));
+
+  // Evidence package recovers.
+  assert.deepEqual(s2.getEvidencePackage(pkg.id), s1.getEvidencePackage(pkg.id));
 });
 
 test('AssetRegistered event is published on registration and validated by the bus catalog', async () => {
