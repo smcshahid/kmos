@@ -13,6 +13,7 @@ import {
   newCanonicalId,
   KmosError,
   type CanonicalId,
+  type CanonicalObject,
 } from '@kmos/canonical-kernel';
 import {
   compareSemver,
@@ -83,9 +84,20 @@ export class CapabilityRegistryService {
       body: { name: input.name, ownerDomain: input.ownerDomain, businessPurpose: input.businessPurpose, currentVersion: input.version, lifecycleState: 'Proposed' },
     });
     this.capabilities.put(capability);
-    this.putManifest(id, input, now);
-    await this.publish('ManifestValidated', id, { capabilityId: id, version: input.version });
-    await this.publish('CapabilityRegistered', id, { capabilityId: id, name: input.name, version: input.version });
+    const manifest = this.putManifest(id, input, now);
+    await this.publish('ManifestValidated', id, {
+      capabilityId: id,
+      version: input.version,
+      object: manifest,
+      objects: [manifest],
+    });
+    await this.publish('CapabilityRegistered', id, {
+      capabilityId: id,
+      name: input.name,
+      version: input.version,
+      object: capability,
+      objects: [capability],
+    });
     return capability;
   }
 
@@ -100,10 +112,18 @@ export class CapabilityRegistryService {
     const now = this.now();
     const manifest = this.putManifest(capabilityId, { ...input, name: cap.body.name, ownerDomain: cap.body.ownerDomain, businessPurpose: cap.body.businessPurpose }, now);
     // advance currentVersion if newer
+    const snapshots: CanonicalObject[] = [manifest];
     if (compareSemver(input.version, cap.body.currentVersion) > 0) {
-      this.capabilities.put({ ...cap, version: cap.version + 1, updatedAt: now, body: { ...cap.body, currentVersion: input.version } });
+      const advanced = { ...cap, version: cap.version + 1, updatedAt: now, body: { ...cap.body, currentVersion: input.version } };
+      this.capabilities.put(advanced);
+      snapshots.push(advanced);
     }
-    await this.publish('ManifestValidated', capabilityId, { capabilityId, version: input.version });
+    await this.publish('ManifestValidated', capabilityId, {
+      capabilityId,
+      version: input.version,
+      object: manifest,
+      objects: snapshots,
+    });
     return manifest;
   }
 
@@ -157,8 +177,15 @@ export class CapabilityRegistryService {
       body: { capabilityId, version, level, authority, grantedAt: now },
     });
     this.certifications.put(cert);
-    this.capabilities.put({ ...cap, version: cap.version + 1, updatedAt: now, body: { ...cap.body, certification: level, lifecycleState: 'Certified' } });
-    await this.publish('CapabilityCertified', capabilityId, { capabilityId, version, level });
+    const certified: CapabilityObject = { ...cap, version: cap.version + 1, updatedAt: now, body: { ...cap.body, certification: level, lifecycleState: 'Certified' } };
+    this.capabilities.put(certified);
+    await this.publish('CapabilityCertified', capabilityId, {
+      capabilityId,
+      version,
+      level,
+      object: cert,
+      objects: [cert, certified],
+    });
     return cert;
   }
 
@@ -171,7 +198,11 @@ export class CapabilityRegistryService {
     const now = this.now();
     const updated: CapabilityObject = { ...cap, version: cap.version + 1, updatedAt: now, body: { ...cap.body, lifecycleState: 'Deprecated' } };
     this.capabilities.put(updated);
-    await this.publish('CapabilityDeprecated', capabilityId, { capabilityId });
+    await this.publish('CapabilityDeprecated', capabilityId, {
+      capabilityId,
+      object: updated,
+      objects: [updated],
+    });
     return updated;
   }
 
@@ -180,6 +211,51 @@ export class CapabilityRegistryService {
     const direct = this.getManifest(capabilityId)?.body.dependencies ?? [];
     const transitive = [...transitiveDependencies(this.currentEdges(), capabilityId)];
     return { direct, transitive };
+  }
+
+  // ---- read-model recovery ----
+
+  /**
+   * Read-model recovery: rebuild every repository the service owns by replaying
+   * the durable event log. Each event carries full `objects` snapshots of the
+   * Capability heads, CapabilityManifest versions and CapabilityCertification
+   * objects it created or mutated. Replaying them in append order — upserting each
+   * snapshot into the store keyed by `object.type` (capabilities and
+   * certifications by id, manifests into the per-capability version map exactly as
+   * putManifest does) — reconstructs the catalog identically to the original write
+   * sequence. Called once on boot when backed by a durable log so getCapability,
+   * getManifest, getVersions, getContract, discover and getCertificationHistory
+   * behave identically before and after a restart.
+   */
+  async hydrate(): Promise<void> {
+    for (const stored of await this.bus.eventLog.read(1)) {
+      const payload = stored.event.payload as {
+        objects?: readonly CanonicalObject[];
+        object?: CanonicalObject;
+      };
+      const snapshots = payload.objects ?? (payload.object ? [payload.object] : []);
+      for (const snap of snapshots) this.rehydrate(snap);
+    }
+  }
+
+  /** Upsert a snapshot into the store that owns its canonical type. */
+  private rehydrate(obj: CanonicalObject): void {
+    switch (obj.type) {
+      case 'Capability':
+        this.capabilities.put(obj as CapabilityObject);
+        break;
+      case 'CapabilityManifest': {
+        const manifest = obj as CapabilityManifestObject;
+        const byVersion =
+          this.manifests.get(manifest.body.capabilityId) ?? new Map<string, CapabilityManifestObject>();
+        byVersion.set(manifest.body.version, manifest);
+        this.manifests.set(manifest.body.capabilityId, byVersion);
+        break;
+      }
+      case 'CapabilityCertification':
+        this.certifications.put(obj as CapabilityCertificationObject);
+        break;
+    }
   }
 
   // ---- internals ----

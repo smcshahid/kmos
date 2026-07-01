@@ -17,6 +17,49 @@ function typesOf(history: readonly StoredEvent[]): string[] {
   return history.map((s) => s.event.identity.type);
 }
 
+test('read-model recovery: hydrate() rebuilds every repository from the durable log (authorization restart-identical)', async () => {
+  const bus = new EventBus();
+  const s1 = new IdentityService({ bus, now: steppingClock() });
+
+  // Representative writes: org + identity + role assignment + delegation, plus a
+  // session and a direct permission grant so every repo backing a getter is exercised.
+  const org = await s1.createOrganization('Acme Archive');
+  const approve = s1.createPermission('knowledge.approve', 'Approve Knowledge');
+  const reviewer = s1.createRole('Reviewer', [approve.id]);
+  const manager = await s1.registerServiceAccount('manager-bot', 'pw', 'ServiceAccount', org.id);
+  const standIn = await s1.createIdentity({ kind: 'Human', displayName: 'Stand-In', organizationId: org.id });
+  await s1.assignRole(manager.id, reviewer.id);
+  const delegation = await s1.delegate(manager.id, standIn.id, ['knowledge.approve'], 60 * 60 * 1000, 'covering PTO');
+  const session = await s1.authenticate(manager.id, 'pw');
+
+  // Pre-restart authorization facts we expect to survive recovery.
+  assert.equal(s1.authorize({ identityId: manager.id, permission: 'knowledge.approve', organizationId: org.id }), true);
+  assert.equal(s1.authorize({ identityId: standIn.id, permission: 'knowledge.approve' }), true); // via delegation
+
+  // A fresh instance on the SAME durable bus/log — simulates a process restart.
+  // Its clock sits shortly after s1's writes but well within the delegation and
+  // session windows (both 1h), so time-bounded checks are stable across restart.
+  const s2 = new IdentityService({ bus, now: steppingClock('2026-06-30T00:01:00.000Z') });
+  assert.equal(s2.getIdentity(manager.id), undefined, 'a fresh instance has empty repositories before hydrate');
+  assert.equal(s2.getOrganization(org.id), undefined);
+  await s2.hydrate();
+
+  // Objects rebuild identically (deep-equal to pre-restart heads).
+  assert.deepEqual(s2.getOrganization(org.id), s1.getOrganization(org.id), 'organization recovered');
+  assert.deepEqual(s2.getIdentity(manager.id), s1.getIdentity(manager.id), 'identity (incl. assigned roles) recovered');
+  assert.deepEqual(s2.getIdentity(manager.id)?.body.roleIds, [reviewer.id], 'role assignment recovered');
+  assert.deepEqual(s2.getRole(reviewer.id), s1.getRole(reviewer.id), 'role recovered');
+  assert.deepEqual(s2.getPermission(approve.id), s1.getPermission(approve.id), 'permission recovered');
+  assert.deepEqual(s2.activeDelegationsFor(standIn.id), s1.activeDelegationsFor(standIn.id), 'delegation recovered');
+  assert.equal(s2.activeDelegationsFor(standIn.id)[0]?.id, delegation.id);
+  assert.equal(s2.validateSession(session.id), true, 'session recovered and still valid');
+
+  // Authorization behaves identically after hydrate (roles + delegations recovered).
+  assert.equal(s2.authorize({ identityId: manager.id, permission: 'knowledge.approve', organizationId: org.id }), true);
+  assert.equal(s2.authorize({ identityId: standIn.id, permission: 'knowledge.approve' }), true, 'delegated authority recovered');
+  assert.equal(s2.authorize({ identityId: standIn.id, permission: 'assets.publish' }), false, 'no privilege escalation after recovery');
+});
+
 test('identity lifecycle: human, service account, and AI worker are all first-class (KMOS-0206 §5)', async () => {
   const svc = new IdentityService({ now: steppingClock() });
   const org = await svc.createOrganization('Acme Archive');

@@ -1,6 +1,6 @@
 {
   "name": "@kmos/reference-capabilities",
-  "version": "1.0.0-pc.1",
+  "version": "1.0.0-pc.2",
   "private": true,
   "type": "module",
   "description": "Reference KMOS capabilities (deterministic stubs) implementing the CapabilityHandler contract structurally. Real engines (Whisper, ffmpeg, LLMs) slot behind the same contract later (KMOS-0120 \u00a713/\u00a722).",

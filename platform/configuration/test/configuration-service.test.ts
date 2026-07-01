@@ -17,6 +17,37 @@ function makeService(extra: { secretResolver?: EchoSecretResolver } = {}) {
   return new ConfigurationService({ bus, now: fixedNow, ...extra });
 }
 
+test('read-model recovery: hydrate() rebuilds sets, versions, and profiles from the durable log (resolve restart-identical)', async () => {
+  const bus = new EventBus({ catalog: createConfigurationCatalog() });
+  const s1 = new ConfigurationService({ bus, now: fixedNow });
+
+  // Representative writes: a set + setValues (producing versions, incl. a profile
+  // override) + a declared profile.
+  const set = await s1.registerSet({ scope: 'platform', namespace: 'core' });
+  await s1.setValues(set.id, { 'log.level': 'info', timeoutMs: 1000 }, { reason: 'defaults' });
+  const v2 = await s1.setValues(set.id, { 'log.level': 'debug' }, { reason: 'dev tuning', profile: 'dev' });
+  const profile = await s1.registerProfile(set.id, 'prod');
+
+  // A fresh instance on the SAME durable bus/log — simulates a process restart.
+  const s2 = new ConfigurationService({ bus, now: fixedNow });
+  assert.equal(s2.getSet(set.id), undefined, 'a fresh instance has empty repositories before hydrate');
+  await s2.hydrate();
+
+  // Set head (incl. currentVersionId pointer + versionCount) rebuilt identically.
+  assert.deepEqual(s2.getSet(set.id), s1.getSet(set.id), 'set head + pointer recovered');
+  // Immutable version history preserved in full.
+  assert.equal(s2.getVersionHistory(set.id).length, s1.getVersionHistory(set.id).length, 'version history depth identical');
+  assert.deepEqual(s2.getVersion(v2.id), s1.getVersion(v2.id), 'latest version recovered');
+  // Profile recovered.
+  assert.deepEqual(s2.getProfiles(set.id), s1.getProfiles(set.id), 'profile recovered');
+  assert.equal(s2.getProfiles(set.id)[0]?.id, profile.id);
+
+  // Resolution behaves identically after recovery (default + profile precedence).
+  assert.equal(await s2.resolve(set.id, 'log.level'), 'info');
+  assert.equal(await s2.resolve(set.id, 'log.level', { profile: 'dev' }), 'debug');
+  assert.equal(await s2.resolve(set.id, 'timeoutMs', { profile: 'dev' }), 1000);
+});
+
 test('Config Service: registering a set emits ConfigurationRegistered (KMOS-0209 §4)', async () => {
   const bus = new EventBus({ catalog: createConfigurationCatalog() });
   const received: StoredEvent[] = [];

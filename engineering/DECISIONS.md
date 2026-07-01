@@ -55,6 +55,12 @@ PROPOSED — awaiting human approval · ACCEPTED — confirmed · SUPERSEDED
 **Decision:** The Olares Application Chart (`deployment/olares/`, Helm + OlaresManifest) is the reference self-hosted deployment; KMOS owns its constitutional core and consumes Olares-managed PostgreSQL for the durable event log; image published to public Docker Hub by `release-image.yml`; `replicas: 1` until read-model persistence lands; the artifact ports to K8s/cloud by changing only the adapter.
 **Consequence:** Validated on real Olares (`mwayolares`) — install accepted, Postgres provisioned, full workflow ran, durable log survived an app restart (77→79 events). The largest operational gap (in-memory only) is closed with evidence. The final pre-GA engineering blocker is now precisely: repository-backed read-model recovery on boot (review/18 §5–§6).
 
+## D-010 — Read-model recovery via state-carried events + boot hydration
+**Status:** ACCEPTED (implemented). Recorded as ADR-0011.
+**Context:** With a durable PostgreSQL EventLog, the log survives restart but the in-memory repositories start empty, so object detail/lineage/governance/identity reads were lost across restarts (review/18 §5) — the final pre-GA blocker.
+**Decision:** State-carried events — every repository-backed object-lifecycle event carries a full object snapshot (`object`/`objects[]`/`execution`/`task`/`versionObject`/`decisions`/`audits`), additive to open payloads (kernel + catalog untouched). Each service exposes `hydrate()` that replays the durable log and rebuilds every repository by mirroring the write path's repo method; `createPlatformFromEnv` hydrates all services on boot, then `search.rebuild()` — no re-emit.
+**Consequence:** Object retrieval, version history, lineage, governance, and authorization behave identically after a restart (per-service rebuild tests + compose restart-cycle validation). `replicas: 1` can be lifted for the single-node profile. Honest limits (roles-never-assigned, timers, intermediate non-terminal approvals) recorded in ADR-0011.
+
 ---
 
 ## Decisions REQUIRING HUMAN APPROVAL (irreversible / product-level)

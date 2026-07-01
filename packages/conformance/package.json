@@ -1,6 +1,6 @@
 {
   "name": "@kmos/conformance",
-  "version": "1.0.0-pc.1",
+  "version": "1.0.0-pc.2",
   "private": true,
   "type": "module",
   "description": "KMOS Conformance Kit — defines and verifies what it means to be KMOS-compliant. Framework-agnostic contract suites for every replaceable port (EventLog, Authorizer, CapabilityHandler) plus canonical-object/event conformance, with a programmatic runner and CLI. Depends only on the canonical kernel so any implementation/adapter/SDK/third party can self-certify.",

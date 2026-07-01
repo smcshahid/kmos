@@ -1,6 +1,6 @@
 {
   "name": "@kmos/capability-registry",
-  "version": "1.0.0-pc.1",
+  "version": "1.0.0-pc.2",
   "private": true,
   "type": "module",
   "description": "KMOS Capability Registry Service (KMOS-0205): authoritative catalog of executable business capabilities.",

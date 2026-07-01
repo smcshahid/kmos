@@ -1,6 +1,6 @@
 {
   "name": "kmos",
-  "version": "1.0.0-pc.1",
+  "version": "1.0.0-pc.2",
   "private": true,
   "description": "Knowledge and Media Operating System - reference implementation (monorepo)",
   "license": "UNLICENSED",

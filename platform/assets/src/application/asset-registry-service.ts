@@ -25,6 +25,7 @@ import {
   newCanonicalId,
   type CanonicalEvent,
   type CanonicalId,
+  type CanonicalObject,
   type CanonicalReference,
   type LifecycleState,
   type StoredEvent,
@@ -327,6 +328,21 @@ export class AssetRegistryService {
       );
     }
 
+    // State-carried snapshots (ADR read-model recovery): every repo-backed object
+    // created/mutated by registration travels on the event so hydrate() can
+    // rebuild the asset, its version chain, provenance and lineage (including
+    // parent lineages touched by applyDerivation) byte-identically after restart.
+    const registeredObjects: CanonicalObject[] = [
+      asset,
+      version,
+      provenance,
+      this.lineage.get(lineage.id) ?? lineage,
+    ];
+    for (const parentId of parents) {
+      const parentLineage = this.lineageOf(parentId);
+      if (parentLineage) registeredObjects.push(parentLineage);
+    }
+
     await this.publish('AssetRegistered', assetId, asset.organizationId, {
       assetId,
       assetType: input.assetType,
@@ -334,6 +350,8 @@ export class AssetRegistryService {
       versionId: version.id,
       provenanceId: provenance.id,
       lineageId: lineage.id,
+      object: asset,
+      objects: registeredObjects,
     });
 
     return asset;
@@ -380,7 +398,12 @@ export class AssetRegistryService {
       },
     });
     this.assets.put(updated);
-    await this.publish('AssetUpdated', assetId, asset.organizationId, { assetId, fields: Object.keys(patch) });
+    await this.publish('AssetUpdated', assetId, asset.organizationId, {
+      assetId,
+      fields: Object.keys(patch),
+      object: updated,
+      objects: [updated],
+    });
     return updated;
   }
 
@@ -398,6 +421,8 @@ export class AssetRegistryService {
       assetId,
       from: previous.storageId,
       to: storageRef.storageId,
+      object: updated,
+      objects: [updated],
     });
     return updated;
   }
@@ -459,6 +484,8 @@ export class AssetRegistryService {
       ordinal,
       parentVersionId: parentId,
       reason: input.reason,
+      object: version,
+      objects: [version, updated],
     });
     return version;
   }
@@ -476,12 +503,21 @@ export class AssetRegistryService {
     for (const inputId of input.inputAssetIds) this.requireAsset(inputId);
     const now = this.now();
     const lineage = this.applyDerivation(input, now);
+    // Carry every lineage object mutated by this derivation (the derived asset's
+    // lineage plus each input's), so getLineage recovers identically post-restart.
+    const mutatedLineages: CanonicalObject[] = [lineage];
+    for (const inputId of input.inputAssetIds) {
+      const inputLineage = this.lineageOf(inputId);
+      if (inputLineage) mutatedLineages.push(inputLineage);
+    }
     await this.publish('LineageUpdated', input.derivedAssetId, undefined, {
       assetId: input.derivedAssetId,
       inputAssetIds: input.inputAssetIds,
       ...(input.transformationCapabilityId !== undefined
         ? { transformationCapabilityId: input.transformationCapabilityId }
         : {}),
+      object: lineage,
+      objects: mutatedLineages,
     });
     return lineage;
   }
@@ -591,6 +627,8 @@ export class AssetRegistryService {
       algorithm: record.algorithm,
       result: record.result,
       ...(note !== undefined ? { note } : {}),
+      object: updated,
+      objects: [updated],
     });
 
     return { assetId, ok, record };
@@ -646,6 +684,8 @@ export class AssetRegistryService {
       assetId,
       evidencePackageId: pkg.id,
       versionCount: versions.length,
+      object: pkg,
+      objects: [pkg],
     });
     return pkg;
   }
@@ -676,13 +716,67 @@ export class AssetRegistryService {
 
     const type =
       to === 'Archived' ? 'AssetArchived' : asset.lifecycle === 'Archived' ? 'AssetRestored' : 'AssetUpdated';
-    await this.publish(type, assetId, asset.organizationId, { assetId, from: asset.lifecycle, to });
+    await this.publish(type, assetId, asset.organizationId, {
+      assetId,
+      from: asset.lifecycle,
+      to,
+      object: updated,
+      objects: [updated],
+    });
     return updated;
   }
 
   /** Convenience: Archive an asset (KMOS-0202 §8). */
   archiveAsset(assetId: CanonicalId): Promise<AssetObject> {
     return this.transitionLifecycle(assetId, 'Archived');
+  }
+
+  // ------------------------------------------------------- Read-model recovery
+
+  /**
+   * Read-model recovery: rebuild every repository the service owns by replaying
+   * the durable event log. Each object-lifecycle event carries full `objects`
+   * snapshots (asset, versions, provenance, lineage, evidence packages) of every
+   * repo-backed object it created or mutated. Replaying them in append order —
+   * upserting each snapshot by id into the repository keyed by `object.type` —
+   * reconstructs each object's head and the full version chain identically to the
+   * original write sequence. Because AssetVersion snapshots have distinct ids the
+   * whole immutable chain is restored, while Asset/Provenance/Lineage upserts
+   * converge on their latest state exactly as the write path (put) would. Called
+   * once on boot when backed by a durable log so getAsset, getVersionHistory,
+   * getProvenance, getLineage and getEvidencePackage behave identically before and
+   * after a restart.
+   */
+  async hydrate(): Promise<void> {
+    for (const stored of await this.bus.eventLog.read(1)) {
+      const payload = stored.event.payload as {
+        objects?: readonly CanonicalObject[];
+        object?: CanonicalObject;
+      };
+      const snapshots = payload.objects ?? (payload.object ? [payload.object] : []);
+      for (const snap of snapshots) this.rehydrate(snap);
+    }
+  }
+
+  /** Upsert a snapshot into the repository that owns its canonical type. */
+  private rehydrate(obj: CanonicalObject): void {
+    switch (obj.type) {
+      case 'Asset':
+        this.assets.put(obj as AssetObject);
+        break;
+      case 'AssetVersion':
+        this.versions.put(obj as AssetVersionObject);
+        break;
+      case 'Provenance':
+        this.provenance.put(obj as ProvenanceObject);
+        break;
+      case 'Lineage':
+        this.lineage.put(obj as LineageObject);
+        break;
+      case 'EvidencePackage':
+        this.evidence.put(obj as EvidencePackageObject);
+        break;
+    }
   }
 
   // ----------------------------------------------------------------- Helpers

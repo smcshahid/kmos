@@ -1,6 +1,6 @@
 {
   "name": "@kmos/platform-catalog",
-  "version": "1.0.0-pc.1",
+  "version": "1.0.0-pc.2",
   "private": true,
   "type": "module",
   "description": "Composition utility: a single merged canonical Event Catalog covering all platform services + domain events, for deployments that run services on ONE shared event bus. Folds the per-service local catalogs into one (KNOWN_ISSUES M1-02; to be promoted into the kernel in M5).",

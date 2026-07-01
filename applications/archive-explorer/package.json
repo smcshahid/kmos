@@ -1,6 +1,6 @@
 {
   "name": "@kmos/archive-explorer",
-  "version": "1.0.0-pc.1",
+  "version": "1.0.0-pc.2",
   "private": true,
   "type": "module",
   "description": "Archive Explorer (WP-20 / KMOS-0009): a THIN application that explores the institutional archive by composing the Asset Registry service. Contains no business logic and no canonical objects.",
