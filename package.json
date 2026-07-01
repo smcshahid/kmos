@@ -15,12 +15,13 @@
     "domains/*",
     "connectors/*",
     "applications/*",
+    "products/*",
     "sdk/*"
   ],
   "scripts": {
     "build": "tsc --build",
     "clean": "tsc --build --clean",
-    "test": "node --experimental-strip-types --import ./tools/dev/register.mjs --test packages/*/test/*.test.ts engines/*/test/*.test.ts platform/*/test/*.test.ts capabilities/*/test/*.test.ts domains/*/test/*.test.ts connectors/*/test/*.test.ts applications/*/test/*.test.ts testing/**/*.test.ts",
+    "test": "node --experimental-strip-types --import ./tools/dev/register.mjs --test packages/*/test/*.test.ts engines/*/test/*.test.ts platform/*/test/*.test.ts capabilities/*/test/*.test.ts domains/*/test/*.test.ts connectors/*/test/*.test.ts applications/*/test/*.test.ts products/*/test/*.test.ts testing/**/*.test.ts",
     "lint": "eslint .",
     "typecheck": "tsc --build",
     "fitness": "node tools/fitness-checks/run.mjs",
@@ -36,6 +37,7 @@
     "seed": "node --experimental-strip-types --import ./tools/dev/register.mjs scripts/seed.mts",
     "health": "node --experimental-strip-types --import ./tools/dev/register.mjs scripts/health.mts",
     "serve": "node --experimental-strip-types --import ./tools/dev/register.mjs applications/api-server/src/index.ts",
+    "studio": "node --experimental-strip-types --import ./tools/dev/register.mjs products/knowledge-studio/src/index.ts",
     "conformance": "node --experimental-strip-types --import ./tools/dev/register.mjs scripts/conformance.mts"
   },
   "devDependencies": {

@@ -28,6 +28,7 @@
     { "path": "applications/administration" },
     { "path": "applications/public-api" },
     { "path": "applications/learning-platform" },
-    { "path": "applications/api-server" }
+    { "path": "applications/api-server" },
+    { "path": "products/knowledge-studio" }
   ]
 }
