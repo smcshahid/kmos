@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kmos
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: kmos
+spec:
+  replicas: 1   # in-memory read models are per-pod; do NOT scale until read-model persistence lands
+  selector:
+    matchLabels:
+      app: kmos
+  template:
+    metadata:
+      labels:
+        app: kmos
+    spec:
+      containers:
+        - name: kmos
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            # KMOS_DATABASE_URL built from the Olares-injected postgres middleware
+            # values. The canonical event log (system of record) is persisted here;
+            # verify these .Values.postgres.* keys against your Olares version.
+            - name: KMOS_DATABASE_URL
+              value: "postgres://{{ .Values.postgres.username }}:{{ .Values.postgres.password }}@{{ .Values.postgres.host }}:{{ .Values.postgres.port }}/{{ .Values.postgres.databases.kmos }}"
+            - name: KMOS_ENFORCE
+              value: "{{ .Values.enforce }}"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

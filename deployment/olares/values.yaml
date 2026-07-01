@@ -1,0 +1,32 @@
+# KMOS Olares Application Chart — values.
+# PREPARED, NOT VALIDATED on a real Olares instance. `.Values.postgres.*` are
+# INJECTED by Olares at install time from the `middleware.postgres` declaration
+# in OlaresManifest.yaml; the placeholders here only let `helm template` render
+# locally. Verify the exact injected keys against your Olares version's docs.
+
+image:
+  # Publish the image built from this repo's Dockerfile and set it here.
+  repository: smcshahid/kmos
+  tag: "1.0.0-pc.1"
+  pullPolicy: IfNotPresent
+
+# Injected by Olares (postgres middleware). Placeholders for local rendering only.
+postgres:
+  host: postgres
+  port: 5432
+  username: kmos
+  password: changeme
+  databases:
+    kmos: kmos
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+# Attribution enforcement (CRIT-2). Off by default; Olares provides the user
+# identity that a production wiring would map into a KMOS CallContext.
+enforce: false
