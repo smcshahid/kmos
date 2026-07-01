@@ -2,6 +2,12 @@
 
 _Last updated: 2026-06-30_
 
+## Status: GA-READY (single-node self-hosted / Olares) pending owner LICENSE — 1.0.0-pc.2. See engineering/review/19-GENERAL-AVAILABILITY-CERTIFICATION.md.
+
+**Read-model recovery VERIFIED ON REAL OLARES (ADR-0011, pc.2):** object retrieval identical across restart cycles on the owner's Olares (event count 60→62→64). Every architectural + operational blocker for the single-node self-hosted profile is resolved and verified on the real target. Independent review (review/19) recommends v1.0 GA for this profile **conditional on the owner setting a LICENSE** (repo is UNLICENSED — the one remaining gate). Finalization: add LICENSE, bump to 1.0.0, tag v1.0.0, publish GA notes. NOT certified: multi-replica HA, managed cloud, high-scale (v1.x).
+
+---
+_(prior status retained below for history)_
 ## Status: PRODUCTION CANDIDATE 1.0.0-pc.1 — VALIDATED on real Olares. CRIT-1 + CRIT-2 resolved. NOT yet GA — see engineering/review/18-OLARES-DEPLOYMENT-VALIDATION-REPORT.md.
 
 **Olares deployment VALIDATED (review/18, ADR-0010):** KMOS installed on a real Olares instance via the Olares Application Chart; Olares provisioned PostgreSQL; the full workflow ran end-to-end; the durable event log SURVIVED an app restart (77→79 events). Image published to public Docker Hub (release-image.yml). The biggest operational gap (in-memory only) is closed with evidence on the real target.
