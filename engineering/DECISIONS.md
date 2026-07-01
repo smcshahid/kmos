@@ -61,6 +61,12 @@ PROPOSED — awaiting human approval · ACCEPTED — confirmed · SUPERSEDED
 **Decision:** State-carried events — every repository-backed object-lifecycle event carries a full object snapshot (`object`/`objects[]`/`execution`/`task`/`versionObject`/`decisions`/`audits`), additive to open payloads (kernel + catalog untouched). Each service exposes `hydrate()` that replays the durable log and rebuilds every repository by mirroring the write path's repo method; `createPlatformFromEnv` hydrates all services on boot, then `search.rebuild()` — no re-emit.
 **Consequence:** Object retrieval, version history, lineage, governance, and authorization behave identically after a restart (per-service rebuild tests + compose restart-cycle validation). `replicas: 1` can be lifted for the single-node profile. Honest limits (roles-never-assigned, timers, intermediate non-terminal approvals) recorded in ADR-0011.
 
+## D-011 — Architecture Freeze v1.0: kernel protected; application-driven evolution
+**Status:** ACCEPTED (declared at v1.0.0 GA). Recorded as ADR-0012.
+**Context:** KMOS v1.0.0 is GA. To last for years and be handed to other teams, the kernel must stop accumulating speculative change, and evolution must be pulled by real needs.
+**Decision:** Freeze the canonical kernel + constitution + catalogs (post-v1.0 changes need the KMOS-9999 §20 migration review + owner approval via CODEOWNERS + `FROZEN.md`). No speculative kernel expansion — flexibility comes only from adapters/capabilities/services/SDKs/extensions/applications. **From v1.0 onward, evolution is driven by the evidenced needs of real applications built ON KMOS, not speculation**; each change SHOULD cite the real application requirement it serves. Archive the constitution + ADRs + reviews at tag v1.0.0 as the immutable v1 record (git tag, release asset, `documentation/V1-RECORD.md`).
+**Consequence:** The kernel stays small, stable, understandable; change is disciplined and evidence-driven; the v1 record is citable and immutable.
+
 ---
 
 ## Decisions REQUIRING HUMAN APPROVAL (irreversible / product-level)
