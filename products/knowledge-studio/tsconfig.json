@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "rootDir": "./src", "outDir": "./dist" },
+  "references": [
+    { "path": "../../packages/canonical-kernel" },
+    { "path": "../../platform/identity" },
+    { "path": "../../platform/assets" },
+    { "path": "../../platform/knowledge" },
+    { "path": "../../platform/governance" },
+    { "path": "../../platform/events" },
+    { "path": "../../platform/capability-registry" },
+    { "path": "../../platform/capability-runtime" },
+    { "path": "../../platform/search" },
+    { "path": "../../engines/platform-catalog" },
+    { "path": "../../domains/media" },
+    { "path": "../../domains/language" }
+  ],
+  "include": ["src/**/*.ts"],
+  "exclude": ["**/*.test.ts", "dist"]
+}
