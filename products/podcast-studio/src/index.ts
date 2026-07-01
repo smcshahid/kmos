@@ -17,4 +17,5 @@ export * from './subtitles.js';
 export * from './clips.js';
 export * from './summary.js';
 export * from './moments.js';
+export * from './downloads.js';
 export { SAMPLE_TITLE, SAMPLE_TRANSCRIPT } from './sample.js';

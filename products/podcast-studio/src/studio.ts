@@ -23,6 +23,7 @@ import { toSrt, toVtt } from './subtitles.js';
 import { chapterClips, highlightReel, type HighlightSpan } from './clips.js';
 import { extractiveSummary } from './summary.js';
 import { detectMoments } from './moments.js';
+import { buildPackage as renderDownloadPackage, type PackageFile } from './downloads.js';
 import type {
   ConceptView, LineageNode, RelatedConcept, Episode, EpisodeKind, StageId, StageState, TrustView,
 } from './types.js';
@@ -479,6 +480,22 @@ export class PodcastStudioService {
       });
     }
     return out.sort((a, b) => b.evidenceCount - a.evidenceCount || a.name.localeCompare(b.name));
+  }
+
+  /** Full concept views for an episode (used by the Download Center). */
+  assembleConceptViews(episodeId: string): ConceptView[] {
+    const ep = this.episodes.get(episodeId);
+    if (!ep) return [];
+    return ep.conceptIds.map((id) => this.conceptView(id)).filter((v): v is ConceptView => v !== undefined);
+  }
+
+  /** The complete downloadable knowledge package (transcript, subtitles, summary,
+   * show notes, study notes, concepts, citation, manifest) — every artifact cited back
+   * to a source moment so downloaded knowledge stays verifiable outside the app. */
+  assemblePackage(episodeId: string): PackageFile[] {
+    const ep = this.episodes.get(episodeId);
+    if (!ep) return [];
+    return renderDownloadPackage(ep, this.assembleConceptViews(episodeId));
   }
 }
 
