@@ -14,8 +14,18 @@ KMOS is built strictly to its Constitution and specification series; the
 1. `npm run verify:offline` (architecture-fitness + full test suite) must pass before and after your change.
 2. In CI, `npm run verify` additionally runs `eslint` + `tsc` (offline they need the registry; see DECISIONS D-E).
 3. Add tests for new behavior (see `testing/`); keep coverage and fitness green.
-4. Record significant decisions as ADRs in `documentation/adr/`.
-5. New capabilities/workflows: follow `documentation/CAPABILITY-DEVELOPMENT-GUIDE.md` / `WORKFLOW-DEVELOPMENT-GUIDE.md`.
+4. Record significant decisions as ADRs in `documentation/adr/`. **Adding an ADR is not done until its row is added to `documentation/adr/README.md` and a `D-00N` entry to `engineering/DECISIONS.md`.**
+5. New capabilities/workflows: follow `documentation/CAPABILITY-DEVELOPMENT-GUIDE.md` / `WORKFLOW-DEVELOPMENT-GUIDE.md`; templates in [`sdk/`](sdk/README.md).
+
+## Trust the clean build, not the incremental one
+`tsc --build` is incremental via `.tsbuildinfo`. After a change that alters a
+**cross-package type** (a kernel/service signature others depend on), a stale
+incremental build can report green locally while a clean build fails — this once
+hid six real defects. **CI is authoritative** because `npm ci` starts from a clean
+checkout with no `dist/`/`.tsbuildinfo`. Locally, before sign-off on a cross-cutting
+change, force a clean build: `npm run clean && npm run typecheck` (or
+`npx tsc --build --force`). Build artifacts (`dist/`, `*.tsbuildinfo`) are gitignored
+and must never be committed.
 
 ## Large-file note
 On some mounts the editor truncates large file writes; prefer shell here-docs for
