@@ -1,7 +1,12 @@
-# KMOS local stack. `docker compose up` brings up Postgres (for the database
-# tests / future persistence) and runs the KMOS reference demo to prove the
-# platform works end-to-end. A long-running API server is a post-KEP-001
-# deliverable; see documentation/DEPLOYMENT-GUIDE.md.
+# KMOS local stack: the HTTP API server backed by a real PostgreSQL EventLog.
+# `docker compose up --build` builds the image (running the full verify gate),
+# starts Postgres with a persistent volume, and runs the KMOS API server with a
+# DURABLE event log (KMOS_DATABASE_URL). The event log survives `docker compose
+# restart kmos` (the Postgres volume persists) — see documentation/OLARES-*.
+#
+#   docker compose up --build -d
+#   curl localhost:8080/health           # { status: ok, events: N }
+#   docker compose run --rm kmos npm run demo   # or run the reference demo
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -25,7 +30,15 @@ services:
         condition: service_healthy
     environment:
       KMOS_DATABASE_URL: postgres://kmos:kmos@postgres:5432/kmos
-    command: ["npm", "run", "demo"]
+      PORT: "8080"
+    ports: ["8080:8080"]
+    # Image CMD is `npm run serve` (the API server). Health-check the running server.
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8080/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
 
 volumes:
   kmos-pgdata:
