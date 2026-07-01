@@ -1,5 +1,15 @@
 # Knowledge Studio — Release Notes
 
+## v1.1.1 — Frictionless YouTube + richer concepts
+
+- **Frictionless YouTube:** the caption/ASR sidecar (yt-dlp + Whisper/Speaches, image
+  `knowledge-studio-caption`) lets a raw YouTube URL process end-to-end via
+  `KS_CAPTION_ENDPOINT`. Enable with `captionService.enabled` + `captionService.speachesUrl`.
+- **Richer concepts:** provider-independent Ollama extraction behind the KMOS contract
+  (ADR-KS-0002), with graceful fallback. Enable with `ollama.url`.
+- Clean image bump (`1.1.1`) so Olares pulls the new build unambiguously. Chart validated
+  with helm; full repo verify 265 pass / 0 fail.
+
 ## v1.1.0 — Daily driver: durable, deployable, reliable
 
 The operational-validation release that turns V1 from a demonstration into a tool you can
