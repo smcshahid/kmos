@@ -1,6 +1,19 @@
 # KMOS - Next Task
 
-_Last updated: 2026-06-30_
+_Last updated: 2026-07-01_
+
+## Current: KCSI-01 Capability Extraction — COMPLETE (increment 01), on `feat/kcsi-01-capability-extraction`
+Evidence-first extraction of the seams Knowledge Studio proved: `withFallback`
+(`@kmos/reference-capabilities`), `@kmos/providers` (Ollama + HTTP caption/ASR), and
+`@kmos/sdk` (platform-substrate factory). Knowledge Studio consumes them with identical
+behavior and −9.5% app LOC. Full suite 289 pass/0 fail, fitness clean, conformance
+COMPLIANT. See ADR-0013, `engineering/review/20-KCSI-01-EXTRACTION-CLOSEOUT.md`, and
+`documentation/CAPABILITY-EVOLUTION-ROADMAP.md`. **Next:** open a PR to merge; the next
+capability move is pulled by the next real application (record a roadmap promotion
+rationale, or a trigger if deferred).
+
+---
+_(prior status retained below)_
 
 ## Status: GA-READY (single-node self-hosted / Olares) pending owner LICENSE — 1.0.0-pc.2. See engineering/review/19-GENERAL-AVAILABILITY-CERTIFICATION.md.
 

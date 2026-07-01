@@ -37,7 +37,8 @@ the Master Roadmap are done. See `engineering/KMOS-CERTIFICATION-REPORT.md`.
 - packages: canonical-kernel
 - engines: platform-catalog, observability
 - platform (10): events, identity, assets, knowledge, governance, capability-registry, capability-runtime, workflow, configuration, search
-- capabilities: reference-capabilities
+- capabilities: reference-capabilities, providers (KCSI-01: Ollama knowledge-extraction + HTTP caption/ASR adapters; `withFallback` primitive)
+- sdk: sdk (KCSI-01: `@kmos/sdk` platform-substrate factory + boot recovery)
 - domains (5): media, language, publishing, preservation, ai-collaboration
 - connectors: connector-framework
 - applications (5): knowledge-studio, research-portal, archive-explorer, administration, public-api

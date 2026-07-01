@@ -116,6 +116,12 @@ import is confined to `infrastructure/`; the port stays technology-free.
 ## 3. Status
 
 These are **documented templates**, verified against the working reference
-implementations in-tree. A packaged SDK (scaffolding CLI, published client
-libraries) is on the roadmap (see `documentation/PLATFORM-VISION.md` and the GA
-assessment) — it is not shipped in v1.0.
+implementations in-tree.
+
+As of **KCSI-01** a real SDK package ships here: [`@kmos/sdk`](./sdk) — the
+platform-substrate factory (`createPlatformRuntime` / `createPlatformRuntimeFromEnv` +
+boot recovery) that composes the 8 platform services so an application never repeats
+the wiring. Real provider adapters live in
+[`@kmos/providers`](../capabilities/providers); see
+[`documentation/PROVIDER-GUIDE.md`](../documentation/PROVIDER-GUIDE.md). A scaffolding
+CLI and published client libraries remain on the roadmap.

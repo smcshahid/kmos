@@ -2,8 +2,11 @@
 
 ## Status
 
-**Accepted-plan** — approved by the owner 2026-07-01; execution autonomous through the
-work packages in
+**Accepted** — approved by the owner 2026-07-01 and **executed** the same day (WP1–WP6
+complete on `feat/kcsi-01-capability-extraction`; full suite 289 pass/0 fail, fitness
+clean, conformance COMPLIANT). Close-out + final assessment:
+[`engineering/review/20-KCSI-01-EXTRACTION-CLOSEOUT.md`](../../engineering/review/20-KCSI-01-EXTRACTION-CLOSEOUT.md).
+Work packages:
 [`engineering/KCSI-01-CAPABILITY-EXTRACTION-PLAN.md`](../../engineering/KCSI-01-CAPABILITY-EXTRACTION-PLAN.md).
 Governed by, and consistent with, [ADR-0012](0012-architecture-freeze-and-application-driven-evolution.md)
 (application-driven evolution) and [ADR-0003](0003-ports-and-adapters.md).
