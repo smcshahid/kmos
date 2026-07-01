@@ -29,6 +29,7 @@ source of truth; these files are the stable, citable architectural record.
 | [0010](0010-olares-reference-deployment.md) | Olares Application Chart as the reference self-hosted deployment | Accepted (validated on real Olares) |
 | [0011](0011-read-model-recovery.md) | Read-model recovery via state-carried events + boot hydration | Accepted |
 | [0012](0012-architecture-freeze-and-application-driven-evolution.md) | Architecture Freeze v1.0: kernel protected; application-driven evolution | Accepted |
+| [0013](0013-provider-capability-extraction-kcsi-01.md) | Provider-independent capability extraction from Knowledge Studio (KCSI-01) | Accepted-plan |
 
 ## Source decisions
 
