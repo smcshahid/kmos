@@ -89,6 +89,8 @@ export interface Source {
   readonly targetLanguage?: string;
   status: SourceStatus;
   error?: string;
+  /** Whether the user has starred this source (daily-driver quick access). */
+  favorite: boolean;
   readonly createdAt: string;
   updatedAt: string;
   readonly stages: StageState[];

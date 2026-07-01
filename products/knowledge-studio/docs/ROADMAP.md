@@ -12,18 +12,28 @@ concepts, **evidence quotes** (jump-to-moment), related concepts, **lineage**,
 Thin over KMOS; provider-independent AI behind contracts; runs fully offline. Tested,
 lint/fitness-clean, reviewed.
 
-## V1.x — Depth & production AI (next)
+## V1.1 — Daily driver (shipped)
 
-- **Job-state persistence.** Persist per-source pipeline state + transcript segments so the
-  full experience (and the evidence-quote projection) survives restarts and enables
-  multi-replica scale. *(Top operational item — see OPERATIONS-GUIDE.)*
-- **Real AI capabilities.** First-class adapters behind existing contracts: Whisper/Speaches
-  transcription, Ollama/hosted-LLM extraction (richer concepts + definitions), real
-  translation. No app change — capability swap only.
-- **YouTube caption/audio fetch.** Wire the `CaptionFetcher` seam to a yt-dlp/caption
-  capability so the *acquire* stage runs end-to-end without pasting.
-- **Smarter chapters + concepts.** Topic-shift segmentation; keyphrase-quality extraction;
-  concept de-noising.
+- ✅ **Job-state persistence** in shared PostgreSQL — the full experience survives a
+  restart (proven against real PostgreSQL).
+- ✅ **Daily-driver UX** — favorites, recent, persistent job history, retry, resume-
+  interrupted, YouTube auto-detect.
+- ✅ **Production caption/ASR seam** (`KS_CAPTION_ENDPOINT`) — provider-independent YouTube
+  processing with honest degradation.
+- ✅ **Olares packaging** — companion app sharing the KMOS PostgreSQL (shared/isolated
+  modes); self-proving image.
+
+## V1.2 — Frictionless YouTube & richer knowledge (next)
+
+- **Real AI capabilities wired on Olares.** Whisper/Speaches ASR behind the caption seam;
+  **Ollama/hosted-LLM extraction** for materially richer concepts + definitions; real
+  translation. Provider-independent, behind contracts.
+- **Language-domain capability injection** (with an ADR) — a small, backward-compatible
+  seam so the app can select a production extraction/translation capability without a fork.
+- **Cross-source library** — unified search + relationships across lectures; a "recently
+  learned" home.
+- **Accessibility pass** — drawer focus-trap/return-focus; published a11y statement.
+- **Incremental search indexing** + capped relation pass for large libraries.
 - **Manual refinement.** Edit chapters and concept definitions (curation as a KMOS
   governance action).
 

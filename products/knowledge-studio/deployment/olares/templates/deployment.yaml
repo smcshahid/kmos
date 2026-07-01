@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: knowledge-studio
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: knowledge-studio
+spec:
+  replicas: 1   # in-memory read models + per-source job cache are per-pod; do NOT scale beyond 1
+  selector:
+    matchLabels:
+      app: knowledge-studio
+  template:
+    metadata:
+      labels:
+        app: knowledge-studio
+    spec:
+      containers:
+        - name: knowledge-studio
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8090
+          env:
+            - name: PORT
+              value: "8090"
+            # SHARED-DATABASE mode (recommended): explicit .Values.databaseUrl points
+            # Knowledge Studio at the SAME PostgreSQL the KMOS app uses — one shared
+            # institutional memory (durable event log + job state). When empty, fall
+            # back to the Olares-injected postgres.* (ISOLATED mode). Verify the exact
+            # injected keys against your Olares version.
+            - name: KMOS_DATABASE_URL
+              value: {{ .Values.databaseUrl | default (printf "postgres://%s:%s@%s:%v/%s" .Values.postgres.username .Values.postgres.password .Values.postgres.host .Values.postgres.port .Values.postgres.databases.kmos) | quote }}
+            - name: KMOS_ENFORCE
+              value: "{{ .Values.enforce }}"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 12
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

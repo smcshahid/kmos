@@ -1,0 +1,82 @@
+# Knowledge Studio — Olares Application Chart manifest (OlaresManifest.yaml).
+#
+# PREPARED, NOT VALIDATED: authored from the OlaresManifest spec (docs.olares.com →
+# Developer → Package → OlaresManifest); NOT installed/tested on a real Olares from the
+# engineering environment. Verify field names/values against YOUR Olares version and
+# test via Olares Studio before submission.
+#
+# Knowledge Studio is a COMPANION application to the KMOS deployment. It is a second
+# stateless compute deployable over the SAME shared PostgreSQL event log — one
+# institutional memory across both apps (no duplicate database). See
+# ../../../products/knowledge-studio/docs/DEPLOYMENT-GUIDE.md for the two sharing modes.
+
+olaresManifest.version: '0.10.0'
+olaresManifest.type: app
+
+metadata:
+  name: knowledge-studio
+  appid: knowledge-studio
+  title: Knowledge Studio
+  description: >-
+    Drop long-form knowledge in, leave with understanding. Turns a YouTube video or
+    transcript into a navigable, verifiable map of ideas — every concept grounded in
+    the exact moment it was said, with lineage and explainable trust. Built entirely
+    on KMOS; shares the KMOS PostgreSQL event log.
+  icon: https://raw.githubusercontent.com/smcshahid/kmos/main/deployment/olares/icon.png
+  version: 1.1.0
+  categories:
+    - Productivity
+    - Education
+
+# How users reach Knowledge Studio. The app listens on 8090 (GET / UI, /health).
+entrances:
+  - name: knowledge-studio
+    port: 8090
+    host: knowledge-studio
+    title: Knowledge Studio
+    authLevel: private
+    openMethod: default
+
+spec:
+  versionName: '1.1.0'
+  requiredMemory: 256Mi
+  limitedMemory: 1Gi
+  requiredCpu: 250m
+  limitedCpu: '1'
+  requiredDisk: 128Mi
+  limitedDisk: 1Gi
+  supportArch:
+    - amd64
+    - arm64
+
+# SHARED MEMORY WITH KMOS: the recommended deployment points Knowledge Studio at the
+# KMOS app's PostgreSQL via .Values.databaseUrl (set at install), so both apps read
+# and write ONE canonical event log. Declaring postgres middleware here is only for
+# ISOLATED mode (Knowledge Studio gets its own database — not shared with KMOS). Keep
+# this block if you want an isolated instance; omit/override databaseUrl for sharing.
+middleware:
+  postgres:
+    username: kmos
+    databases:
+      - name: kmos
+        extensions:
+          - vectors
+
+permission:
+  appData: true
+  appCache: false
+  userData: []
+
+options:
+  dependencies:
+    - name: olares
+      version: '>=1.11.0-0'
+      type: system
+      mandatory: true
+    # Recommended: install the KMOS app first (shared platform + PostgreSQL).
+    - name: kmos
+      version: '>=1.0.0-0'
+      type: application
+      mandatory: false
+  analytics:
+    enabled: false

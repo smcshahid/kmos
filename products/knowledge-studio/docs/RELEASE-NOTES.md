@@ -1,5 +1,51 @@
 # Knowledge Studio — Release Notes
 
+## v1.1.0 — Daily driver: durable, deployable, reliable
+
+The operational-validation release that turns V1 from a demonstration into a tool you can
+use every day. **Come back tomorrow, and everything is still there.**
+
+### Highlights
+
+- **Durable job-state (the daily-driver linchpin).** A processed source's full experience
+  — transcript, chapters, per-concept trust, favorites, job history — now survives a
+  restart, persisted in the **same shared PostgreSQL** the KMOS event log uses (no
+  duplicate services). **Proven against real PostgreSQL:** process → kill → restart →
+  `recovered sources: 1`, concept view still verifiable (evidence @12s, lineage, trust),
+  search intact.
+- **Daily-driver UX.** Library with **Favorites** + **Recent** (persistent job history),
+  **Retry** for failed/interrupted sources, favorite stars, and **YouTube auto-detect** in
+  the composer.
+- **Reliability.** A source interrupted by a restart recovers as **failed-and-retryable**;
+  every failure mode (empty/junk transcript, YouTube-without-infra, caption timeout,
+  storage hiccup) degrades gracefully with a meaningful message — no crashes.
+- **Production caption/ASR seam.** A provider-independent HTTP capability
+  (`KS_CAPTION_ENDPOINT`) lets YouTube URLs process end-to-end where yt-dlp/Whisper/Speaches
+  exists; degrades honestly when absent. Never couples to one provider.
+- **First-class Olares packaging.** A Knowledge Studio Application Chart (OlaresManifest +
+  Helm) as a **companion to the KMOS deployment**, sharing its PostgreSQL (one institutional
+  memory), with shared-DB (recommended) and isolated modes. Self-proving Docker image.
+- **Repo quality.** Architecture-fitness now scans `products/` (0 violations); 30 tests
+  (adds persistence + caption suites); ADR-KS-0001.
+
+### Verified locally (evidence over assertions)
+
+Real-PostgreSQL restart persistence; image build (self-proving) + run + health; performance
+(15 ms sample, 0.05 ms concept view); all failure modes graceful. **Not** verified: the live
+Olares apply (no cluster access) — a full runbook + checklist is provided
+([OLARES-DEPLOYMENT.md](OLARES-DEPLOYMENT.md)), and nothing claims a deployment that hasn't
+happened. See [OPERATIONAL-VALIDATION.md](OPERATIONAL-VALIDATION.md) and
+[DAILY-DRIVER-ASSESSMENT.md](DAILY-DRIVER-ASSESSMENT.md).
+
+### New configuration
+
+| Env | Purpose |
+|---|---|
+| `KMOS_DATABASE_URL` | Shared/durable PostgreSQL (event log + job state); unset → in-memory |
+| `KS_CAPTION_ENDPOINT` | Provider-independent caption/ASR HTTP capability for YouTube |
+
+---
+
 ## v1.0.0 — Verifiable knowledge from long-form media
 
 The first flagship application of the KMOS ecosystem. **Drop long-form knowledge in. Leave

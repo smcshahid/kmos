@@ -1,6 +1,6 @@
 {
   "name": "@kmos/knowledge-studio-app",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "Knowledge Studio — the flagship KMOS ecosystem application. Drop long-form knowledge in, leave with understanding: a thin product layer over KMOS that turns media into verifiable, navigable knowledge (transcript, chapters, concepts, evidence, lineage, trust, search, collections, downloads).",

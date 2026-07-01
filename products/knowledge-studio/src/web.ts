@@ -62,8 +62,13 @@ textarea{min-height:150px;line-height:1.55}
 .section-title{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:34px 0 12px}
 .grid{display:grid;gap:14px}
 .lib{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
-.libcard{padding:16px;text-align:left;display:block;width:100%;border:1px solid var(--line);background:var(--panel);border-radius:var(--radius);box-shadow:var(--shadow)}
-.libcard h3{margin:0 0 4px;font-size:16px}
+.libcard{display:flex;align-items:flex-start;gap:8px;padding:14px 16px;border:1px solid var(--line);background:var(--panel);border-radius:var(--radius);box-shadow:var(--shadow)}
+.libopen{flex:1;min-width:0;text-align:left;background:none;border:0;color:inherit;padding:0}
+.libopen h3{margin:0 0 4px;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.libact{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.star{background:none;border:0;font-size:18px;line-height:1;color:var(--muted);padding:2px}
+.star.on{color:#e0a53a}
+.retry{background:var(--accent-soft);color:var(--accent);border:0;border-radius:7px;padding:4px 10px;font-size:12.5px;font-weight:600}
 .badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted);background:var(--bg);border:1px solid var(--line);padding:3px 9px;border-radius:999px}
 .badge.ok{color:var(--good)} .badge.run{color:var(--accent)} .badge.err{color:var(--warn)}
 /* pipeline */
@@ -198,23 +203,39 @@ function composerBody(){
 function loadSample(){api('GET','/api/sample').then(function(s){state.kind='transcript';
   document.querySelectorAll('.tab').forEach(function(x){x.setAttribute('aria-selected',x.getAttribute('data-k')==='transcript'?'true':'false');});
   composerBody();document.getElementById('tx').value=s.transcript;document.getElementById('ref').value=s.title;});}
+function isYouTube(u){return /(?:youtube\\.com\\/(?:watch\\?[^\\s]*v=|embed\\/|shorts\\/|live\\/)|youtu\\.be\\/)[A-Za-z0-9_-]{11}/.test(u||'');}
 function submit(){
   var tx=document.getElementById('tx'),ref=document.getElementById('ref');
   var payload={kind:state.kind,reference:(ref&&ref.value)||'Untitled',transcript:(tx&&tx.value)||'',targetLanguage:document.getElementById('lang').value};
   if(state.kind==='transcript'){payload.title=(ref&&ref.value)||'';payload.reference=payload.title||'Pasted transcript';}
-  if(!payload.transcript.trim()&&state.kind!=='youtube'){alert('Paste a transcript to process.');return;}
-  if(state.kind==='youtube'&&!payload.reference.trim()){alert('Enter a YouTube URL.');return;}
+  // Auto-detect a YouTube link pasted into any field (friction reducer).
+  if(isYouTube(payload.reference)||isYouTube(payload.transcript.split('\\n')[0])){payload.kind='youtube';if(isYouTube(payload.transcript.split('\\n')[0])&&payload.transcript.split('\\n').length<2){payload.reference=payload.transcript.trim();payload.transcript='';}}
+  if(!payload.transcript.trim()&&payload.kind!=='youtube'){alert('Paste a transcript to process.');return;}
+  if(payload.kind==='youtube'&&!payload.reference.trim()){alert('Enter a YouTube URL.');return;}
   api('POST','/api/sources',payload).then(function(r){if(r.id){openSource(r.id);}else{alert(r.error||'Could not start.');}});
 }
 function loadLibrary(){api('GET','/api/sources').then(function(list){
   var lib=document.getElementById('library');if(!lib)return;
   if(!list.length){lib.innerHTML='';return;}
-  var html='<div class="section-title">Your library</div><div class="grid lib">';
-  list.forEach(function(s){html+='<button class="libcard" data-id="'+esc(s.id)+'"><h3>'+esc(s.title)+'</h3>'
-    +'<div class="muted small">'+badge(s.status)+' &middot; '+s.conceptCount+' concepts &middot; '+s.chapterCount+' chapters</div></button>';});
-  html+='</div>';lib.innerHTML=html;
-  lib.querySelectorAll('.libcard').forEach(function(c){c.addEventListener('click',function(){openSource(c.getAttribute('data-id'));});});
+  var favs=list.filter(function(s){return s.favorite;});
+  var rest=list.filter(function(s){return !s.favorite;});
+  var html='';
+  if(favs.length){html+='<div class="section-title">Favorites</div><div class="grid lib">'+favs.map(card).join('')+'</div>';}
+  html+='<div class="section-title">'+(favs.length?'Recent':'Your library')+'</div><div class="grid lib">'+rest.map(card).join('')+'</div>';
+  lib.innerHTML=html;
+  lib.querySelectorAll('.libopen').forEach(function(c){c.addEventListener('click',function(){openSource(c.getAttribute('data-id'));});});
+  lib.querySelectorAll('.star').forEach(function(b){b.addEventListener('click',function(e){e.stopPropagation();
+    api('POST','/api/sources/'+b.getAttribute('data-id')+'/favorite').then(function(){loadLibrary();});});});
+  lib.querySelectorAll('.retry').forEach(function(b){b.addEventListener('click',function(e){e.stopPropagation();
+    api('POST','/api/sources/'+b.getAttribute('data-id')+'/retry').then(function(){openSource(b.getAttribute('data-id'));});});});
 });}
+function card(s){
+  return '<div class="libcard">'
+    +'<button class="libopen" data-id="'+esc(s.id)+'"><h3>'+esc(s.title)+'</h3>'
+    +'<div class="muted small">'+badge(s.status)+' &middot; '+s.conceptCount+' concepts &middot; '+s.chapterCount+' chapters</div></button>'
+    +'<div class="libact"><button class="star '+(s.favorite?'on':'')+'" data-id="'+esc(s.id)+'" aria-label="'+(s.favorite?'Unfavorite':'Favorite')+'" title="'+(s.favorite?'Unfavorite':'Favorite')+'">'+(s.favorite?'\\u2605':'\\u2606')+'</button>'
+    +(s.status==='failed'?'<button class="retry" data-id="'+esc(s.id)+'">Retry</button>':'')+'</div></div>';
+}
 function badge(st){var cls=st==='ready'?'ok':st==='failed'?'err':'run';var lbl=st==='ready'?'Ready':st==='failed'?'Failed':'Processing';return '<span class="badge '+cls+'">'+lbl+'</span>';}
 
 // ---------- Source (processing + ready) ----------
@@ -227,6 +248,7 @@ function renderProcessing(s){
   var html='<a class="btn ghost small" id="back">&larr; Library</a>'
    +'<h1 style="margin:16px 0 2px;font-size:30px;letter-spacing:-.02em">'+esc(s.title)+'</h1>'
    +'<p class="muted" aria-live="polite">'+(s.status==='failed'?'<b style="color:var(--warn)">Could not finish:</b> '+esc(s.error||''):'<span class="spin"></span>Turning this into knowledge…')+'</p>'
+   +(s.status==='failed'?'<p style="margin:-6px 0 14px"><button class="btn small" id="retry">Retry processing</button></p>':'')
    +'<div class="card" style="padding:10px"><div class="pipe">';
   s.stages.forEach(function(st){
     var mark=st.status==='done'?'✓':st.status==='skipped'?'–':st.status==='failed'?'!':'';
@@ -236,13 +258,14 @@ function renderProcessing(s){
   });
   html+='</div></div>';
   app.innerHTML=html;document.getElementById('back').addEventListener('click',home);
+  var rt=document.getElementById('retry');if(rt){rt.addEventListener('click',function(){api('POST','/api/sources/'+s.id+'/retry').then(function(){openSource(s.id);});});}
 }
 function modeLabel(m){return m==='kmos'?'KMOS':m==='projection'?'projection':m==='reference'?'reference AI':m==='external'?'needs infra':m;}
 
 function renderReady(s){
   var html='<a class="btn ghost small" id="back">&larr; Library</a>'
    +'<div class="row" style="margin:16px 0 4px"><h1 style="margin:0;font-size:30px;letter-spacing:-.02em">'+esc(s.title)+'</h1>'
-   +'<span class="grow"></span><span class="badge ok">Ready</span></div>'
+   +'<span class="grow"></span><button class="star '+(s.favorite?'on':'')+'" id="fav" aria-label="Favorite" title="Favorite">'+(s.favorite?'\\u2605':'\\u2606')+'</button><span class="badge ok">Ready</span></div>'
    +'<p class="muted small">'+s.chapters.length+' chapters &middot; '+s.conceptIds.length+' concepts &middot; '+Math.round(s.durationSec/60)+' min &middot; grounded in a durable KMOS knowledge graph</p>'
    +'<div class="tabs" role="tablist" style="margin:18px 0 20px">'
    +'<button class="tab" role="tab" data-v="concepts" aria-selected="true">Concepts</button>'
@@ -251,6 +274,7 @@ function renderReady(s){
    +'<div id="view"></div>';
   app.innerHTML=html;
   document.getElementById('back').addEventListener('click',home);
+  var fav=document.getElementById('fav');if(fav){fav.addEventListener('click',function(){api('POST','/api/sources/'+s.id+'/favorite').then(function(r){s.favorite=r.favorite;fav.className='star'+(r.favorite?' on':'');fav.innerHTML=r.favorite?'\\u2605':'\\u2606';});});}
   var tabs=document.querySelectorAll('.tab');
   tabs.forEach(function(t){t.addEventListener('click',function(){tabs.forEach(function(x){x.setAttribute('aria-selected','false');});t.setAttribute('aria-selected','true');showView(s,t.getAttribute('data-v'));});});
   showView(s,'concepts');

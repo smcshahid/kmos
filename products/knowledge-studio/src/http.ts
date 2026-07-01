@@ -70,6 +70,14 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse, studi
       const source = studio.getSource(id);
       return source ? sendJson(res, 200, source) : sendJson(res, 404, { error: 'Source not found' });
     }
+    if (method === 'POST' && id && seg[3] === 'retry') {
+      const source = await studio.retry(id);
+      return source ? sendJson(res, 202, { id: source.id, status: source.status }) : sendJson(res, 404, { error: 'Source not found' });
+    }
+    if (method === 'POST' && id && seg[3] === 'favorite') {
+      const source = await studio.toggleFavorite(id);
+      return source ? sendJson(res, 200, { id: source.id, favorite: source.favorite }) : sendJson(res, 404, { error: 'Source not found' });
+    }
     if (method === 'GET' && id && seg[3] === 'concepts') {
       return sendJson(res, 200, studio.conceptSummaries(id));
     }
@@ -107,7 +115,7 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse, studi
 function summarizeSource(s: ReturnType<StudioService['listSources']>[number]): Record<string, unknown> {
   return {
     id: s.id, title: s.title, kind: s.kind, status: s.status, error: s.error ?? null,
-    conceptCount: s.conceptIds.length, chapterCount: s.chapters.length,
+    favorite: s.favorite, conceptCount: s.conceptIds.length, chapterCount: s.chapters.length,
     durationSec: s.durationSec, createdAt: s.createdAt,
     stages: s.stages.map((st) => ({ id: st.id, status: st.status })),
   };

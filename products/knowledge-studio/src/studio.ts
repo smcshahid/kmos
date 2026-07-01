@@ -16,6 +16,7 @@ import { parseTranscript, segmentsToText, totalDuration } from './transcript.js'
 import { detectChapters } from './chapters.js';
 import { findEvidence } from './evidence.js';
 import { resolveYouTube } from './youtube.js';
+import { type SourceStore, trustSubset } from './source-store.js';
 import type {
   ConceptView, LineageNode, RelatedConcept, Source, SourceKind, StageId, StageState, TrustView,
 } from './types.js';
@@ -49,12 +50,61 @@ export class StudioService {
   private readonly sources = new Map<string, Source>();
   private readonly trust = new Map<CanonicalId, TrustView>();
   private readonly conceptSource = new Map<CanonicalId, string>();
+  /** In-session original transcript per source, for same-session retry. */
+  private readonly inputs = new Map<string, SubmitInput>();
+  private readonly store?: SourceStore;
+  /** Provider-independent async caption/ASR fetcher (yt-dlp/Whisper/Speaches behind
+   * an HTTP contract). When absent, YouTube without a supplied transcript degrades
+   * honestly (the pipeline reports "needs infra"). */
+  private readonly captionFetcher?: (videoId: string) => Promise<string | undefined>;
   private orgId?: CanonicalId;
   private readonly now: () => string;
 
-  constructor(platform: StudioPlatform, opts: { now?: () => string } = {}) {
+  constructor(platform: StudioPlatform, opts: {
+    now?: () => string;
+    store?: SourceStore;
+    captionFetcher?: (videoId: string) => Promise<string | undefined>;
+  } = {}) {
     this.p = platform;
     this.now = opts.now ?? (() => new Date().toISOString());
+    if (opts.store) this.store = opts.store;
+    if (opts.captionFetcher) this.captionFetcher = opts.captionFetcher;
+  }
+
+  /**
+   * Recover persisted source job-state on boot so the full experience survives a
+   * restart (the daily-driver promise). The canonical knowledge is already rehydrated
+   * by the platform from the durable event log; here we restore the view layer:
+   * transcript segments, chapters, per-concept trust, and the concept→source map. A
+   * source caught mid-processing by the restart is marked failed-and-retryable rather
+   * than left forever "processing".
+   */
+  async init(): Promise<void> {
+    if (!this.store) return;
+    await this.store.init();
+    for (const entry of await this.store.load()) {
+      const source = entry.source;
+      if (source.status === 'processing' || source.status === 'queued') {
+        source.status = 'failed';
+        source.error = 'Processing was interrupted by a restart. Retry to finish.';
+        const running = source.stages.find((s) => s.status === 'running' || s.status === 'pending');
+        if (running && running.status === 'running') running.status = 'failed';
+      }
+      this.sources.set(source.id, source);
+      for (const cid of source.conceptIds) this.conceptSource.set(cid, source.id);
+      for (const [cid, t] of Object.entries(entry.trust)) this.trust.set(cid as CanonicalId, t);
+    }
+  }
+
+  private async persist(sourceId: string): Promise<void> {
+    if (!this.store) return;
+    const source = this.sources.get(sourceId);
+    if (!source) return;
+    try {
+      await this.store.save({ source, trust: trustSubset(source.conceptIds, this.trust) });
+    } catch {
+      // Persistence is best-effort; a storage hiccup must never crash processing.
+    }
   }
 
   /** The organization every piece of knowledge is attributed to (created once). */
@@ -72,7 +122,9 @@ export class StudioService {
    * with the queued Source so the UI can poll {@link getSource} for live progress. */
   async submit(input: SubmitInput): Promise<Source> {
     const source = await this.createSource(input);
-    void this.runPipeline(source.id, input).catch((err: unknown) => this.failSource(source.id, err));
+    void this.runPipeline(source.id, input)
+      .then(() => this.persist(source.id))
+      .catch((err: unknown) => this.failSource(source.id, err));
     return source;
   }
 
@@ -81,10 +133,49 @@ export class StudioService {
     const source = await this.createSource(input);
     try {
       await this.runPipeline(source.id, input);
+      await this.persist(source.id);
     } catch (err) {
-      this.failSource(source.id, err);
+      await this.failSource(source.id, err);
     }
     return this.sources.get(source.id)!;
+  }
+
+  /** Re-run processing for a failed/interrupted source, reusing its original input
+   * (in-session) or reconstructing the transcript from its persisted segments. */
+  async retry(sourceId: string): Promise<Source | undefined> {
+    const source = this.sources.get(sourceId);
+    if (!source) return undefined;
+    const original = this.inputs.get(sourceId);
+    const transcript = original?.transcript ?? (source.segments.length ? segmentsToText(source.segments) : '');
+    if (!transcript.trim()) {
+      source.status = 'failed';
+      source.error = 'Cannot retry: the original transcript is unavailable. Please submit the source again.';
+      await this.persist(sourceId);
+      return source;
+    }
+    const input: SubmitInput = {
+      kind: source.kind, reference: source.reference, title: source.title,
+      transcript, ...(source.targetLanguage ? { targetLanguage: source.targetLanguage } : {}),
+    };
+    // Reset stages and re-run.
+    source.status = 'queued';
+    source.error = '';
+    for (const st of source.stages) { st.status = 'pending'; delete st.detail; delete st.startedAt; delete st.finishedAt; }
+    this.inputs.set(sourceId, input);
+    void this.runPipeline(sourceId, input)
+      .then(() => this.persist(sourceId))
+      .catch((err: unknown) => this.failSource(sourceId, err));
+    return source;
+  }
+
+  /** Toggle the favorite flag (daily-driver quick access). */
+  async toggleFavorite(sourceId: string): Promise<Source | undefined> {
+    const source = this.sources.get(sourceId);
+    if (!source) return undefined;
+    source.favorite = !source.favorite;
+    source.updatedAt = this.now();
+    await this.persist(sourceId);
+    return source;
   }
 
   private async createSource(input: SubmitInput): Promise<Source> {
@@ -97,6 +188,7 @@ export class StudioService {
       reference: input.reference,
       ...(input.targetLanguage ? { targetLanguage: input.targetLanguage } : {}),
       status: 'queued',
+      favorite: false,
       createdAt: at,
       updatedAt: at,
       stages: STAGE_DEFS.map((d) => ({ id: d.id, label: d.label, status: 'pending', mode: 'kmos' })),
@@ -106,6 +198,8 @@ export class StudioService {
       durationSec: 0,
     };
     this.sources.set(id, source);
+    this.inputs.set(id, input);
+    await this.persist(id);
     return source;
   }
 
@@ -120,10 +214,18 @@ export class StudioService {
     let acquireMode: StageState['mode'] = 'kmos';
     if (input.kind === 'youtube') {
       const yt = resolveYouTube(input.reference);
-      if (!transcriptText && yt.captions) transcriptText = yt.captions;
-      acquireMode = transcriptText ? 'kmos' : 'external';
+      let fetched = false;
+      if (!transcriptText && yt.videoId && this.captionFetcher) {
+        try {
+          const captions = await this.captionFetcher(yt.videoId);
+          if (captions && captions.trim()) { transcriptText = captions.trim(); fetched = true; }
+        } catch {
+          // Degrade gracefully: fall through to the honest "needs infra" path.
+        }
+      }
+      acquireMode = fetched ? 'kmos' : transcriptText ? 'kmos' : 'external';
       acquireDetail = yt.videoId
-        ? `YouTube video ${yt.videoId}. ${transcriptText ? 'Captions/transcript supplied.' : 'Download + captions run via a yt-dlp capability in production.'}`
+        ? `YouTube video ${yt.videoId}. ${fetched ? 'Captions fetched via the configured caption/ASR capability.' : transcriptText ? 'Captions/transcript supplied.' : 'Download + captions run via a yt-dlp/Whisper capability (not configured here).'}`
         : 'Unrecognized YouTube URL.';
     } else {
       acquireDetail = input.kind === 'upload'
@@ -285,7 +387,7 @@ export class StudioService {
     source.updatedAt = this.now();
   }
 
-  private failSource(sourceId: string, err: unknown): void {
+  private async failSource(sourceId: string, err: unknown): Promise<void> {
     const source = this.sources.get(sourceId);
     if (!source) return;
     source.status = 'failed';
@@ -293,6 +395,7 @@ export class StudioService {
     const running = source.stages.find((s) => s.status === 'running');
     if (running) { running.status = 'failed'; running.finishedAt = this.now(); }
     source.updatedAt = this.now();
+    await this.persist(sourceId);
   }
 
   // --- Read models --------------------------------------------------------
