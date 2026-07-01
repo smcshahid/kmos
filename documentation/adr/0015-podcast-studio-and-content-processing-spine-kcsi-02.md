@@ -2,8 +2,12 @@
 
 ## Status
 
-**Accepted-plan** — the second flagship application initiative, executing the KEAI-01
-Option B recommendation ([ADR-0014](0014-ecosystem-architecture-and-constitution-keai-01.md)).
+**Accepted** — executed 2026-07-01 (WP1–WP8 complete; Podcast Studio V1 shipped; full
+suite 320 pass/0 fail, fitness clean, conformance COMPLIANT; `@kmos/content-projections`
+extracted and both flagship apps refactored onto it). Close-out + capability assessment +
+final recommendation: [`engineering/review/21-KCSI-02-CLOSEOUT.md`](../../engineering/review/21-KCSI-02-CLOSEOUT.md).
+The second flagship application initiative, executing the KEAI-01 Option B recommendation
+([ADR-0014](0014-ecosystem-architecture-and-constitution-keai-01.md)).
 Consistent with [ADR-0012](0012-architecture-freeze-and-application-driven-evolution.md)
 (application-driven evolution), [ADR-0013](0013-provider-capability-extraction-kcsi-01.md)
 (KCSI-01), and the [Ecosystem Constitution](../ecosystem/ECOSYSTEM-CONSTITUTION.md).

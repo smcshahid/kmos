@@ -104,6 +104,14 @@ their triggers are now concrete, and their maturity is documented. Full analysis
 Published→Archived`) — a good pattern; **deferred**, trigger: a second app needs explicit
 business-lifecycle transitions distinct from job state.
 
+**KCSI-02 single-consumer candidates (Podcast Studio only — kept in the app):** subtitles
+(SRT/VTT), extractive summary, moment detection, clip/reel planning, publishing/package
+renderers, RSS acquisition, and the episode/job-persistence pattern. Each is real and
+working, but has **one** consumer today, so per Article IV it stays in the app. Promotion
+trigger for all: **a second application needs the same output/behavior** — then extract
+(publishing/persistence likely to `domains/publishing` / an app-tier `@kmos/app-kit`;
+subtitles/summary/moments/clips to a capability). See `engineering/review/21-KCSI-02-CLOSEOUT.md` §2.2.
+
 **Explicitly NOT ecosystem capabilities (KEAI-01):** generative media (avatar/lip-sync/
 image-diffusion/i2v), creative authoring agents, and deployment glue (Jellyfin/Open WebUI
 integration) — application-specific; see `KEAI-01-CAPABILITY-INVENTORY.md` §D/§E. i2v is
@@ -124,6 +132,7 @@ not production-ready by AIMPOS's own benchmark (14× slower, uncertified) — do
 | 2026-07-01 | WP6 close-out: full suite 289 pass/1 skip/0 fail, fitness clean, conformance ALL COMPLIANT. Provider Guide + independent reviews + final assessment (review/20). ADR-0013 → Accepted (executed). KCSI-01 increment 01 complete. |
 | 2026-07-01 | KEAI-01: added §4a ecosystem candidates from AIMPOS/Media-Pipeline/olares-one evidence (acquisition, media-processing, translation, chunking, subtitles, moments, publishing, preservation, resilience, quality-tiers). All stay deferred (evidence-first) with concrete triggers; most unlock when Media Pipeline is built on KMOS. Ecosystem docs: `documentation/ecosystem/`. |
 | 2026-07-01 | KCSI-02 WP7: extracted **content projections** (transcript/chapters/evidence) to `@kmos/content-projections` once Podcast Studio became the second consumer; refactored BOTH Knowledge Studio and Podcast Studio onto it (byte-identical duplication deleted; full suite 320 pass/0 fail; fitness clean, 33 packages). App-only outputs (subtitles, summary, moments, clips, publishing) remain in Podcast Studio — still single-consumer; recorded as candidates with triggers. |
+| 2026-07-01 | KCSI-02 close-out (review/21): Podcast Studio V1 shipped (complete product); conformance COMPLIANT. Capability assessment + final recommendation — **make application development the primary focus** for the knowledge/media-light app family; the media-provider initiative (ffmpeg/translation/preservation) is demand-pulled by a future media-heavy app. ADR-0015 → Accepted (executed). |
 
 _Maintenance rule: this file is updated in the **same** change that extracts a
 capability (add its §3 row + rationale), fires a trigger (move §4 → §3), or defers a
