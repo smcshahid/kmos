@@ -12,4 +12,5 @@ export * from './studio.js';
 export * from './transcript.js';
 export * from './chapters.js';
 export * from './evidence.js';
+export * from './acquisition.js';
 export { SAMPLE_TITLE, SAMPLE_TRANSCRIPT } from './sample.js';

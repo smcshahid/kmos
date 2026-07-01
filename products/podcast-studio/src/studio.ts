@@ -18,6 +18,7 @@ import type { PodcastPlatform } from './platform.js';
 import { parseTranscript, segmentsToText, totalDuration } from './transcript.js';
 import { detectChapters } from './chapters.js';
 import { findEvidence } from './evidence.js';
+import { resolveSource, type TranscriptFetcher } from './acquisition.js';
 import type {
   ConceptView, LineageNode, RelatedConcept, Episode, EpisodeKind, StageId, StageState, TrustView,
 } from './types.js';
@@ -55,10 +56,14 @@ export class PodcastStudioService {
   private readonly inputs = new Map<string, SubmitInput>();
   private orgId?: CanonicalId;
   private readonly now: () => string;
+  /** Provider-independent transcript/ASR fetcher (yt-dlp/Whisper/Speaches behind an
+   * HTTP contract, from @kmos/providers). Absent → honest degradation. */
+  private readonly transcriptFetcher?: TranscriptFetcher;
 
-  constructor(platform: PodcastPlatform, opts: { now?: () => string } = {}) {
+  constructor(platform: PodcastPlatform, opts: { now?: () => string; transcriptFetcher?: TranscriptFetcher } = {}) {
     this.p = platform;
     this.now = opts.now ?? (() => new Date().toISOString());
+    if (opts.transcriptFetcher) this.transcriptFetcher = opts.transcriptFetcher;
   }
 
   /** Register an episode and start processing in the background. Returns immediately
@@ -153,13 +158,28 @@ export class PodcastStudioService {
     ep.status = 'processing';
     const orgId = await this.ensureOrg();
 
-    // 1) Acquire — obtain a transcript. WP1: a supplied transcript is the honest path;
-    //    RSS/audio/YouTube acquisition + ASR arrive in WP2 (degraded honestly here).
-    const transcriptText = (input.transcript ?? '').trim();
+    // 1) Acquire — obtain a transcript. A supplied transcript is always honest; otherwise
+    //    resolve the source and fetch captions/ASR via the configured provider (WP2). With
+    //    no provider and no transcript, degrade honestly ("needs infra").
+    let transcriptText = (input.transcript ?? '').trim();
+    let fetched = false;
+    if (!transcriptText && this.transcriptFetcher) {
+      const resolved = resolveSource(input.kind, input.reference);
+      if (resolved.audioRef) {
+        try {
+          const captions = await this.transcriptFetcher(resolved.audioRef);
+          if (captions && captions.trim()) { transcriptText = captions.trim(); fetched = true; }
+        } catch {
+          // Degrade gracefully: fall through to the honest "needs infra" path.
+        }
+      }
+    }
     const acquireMode: StageState['mode'] = transcriptText ? 'kmos' : 'external';
-    const acquireDetail = transcriptText
-      ? (input.kind === 'transcript' ? 'Transcript supplied directly.' : `Transcript supplied for ${input.kind} episode.`)
-      : `Acquisition + ASR for a ${input.kind} episode run via a yt-dlp/Whisper capability (not configured here). Paste a transcript to process now.`;
+    const acquireDetail = fetched
+      ? `Transcript fetched via the configured caption/ASR capability for this ${input.kind} episode.`
+      : transcriptText
+        ? (input.kind === 'transcript' ? 'Transcript supplied directly.' : `Transcript supplied for this ${input.kind} episode.`)
+        : `Acquisition + ASR for a ${input.kind} episode run via a yt-dlp/Whisper capability (not configured here). Paste a transcript to process now.`;
     this.startStage(ep, 'acquire', acquireMode, acquireDetail);
     if (!transcriptText) {
       this.doneStage(ep, 'acquire', 'failed');
