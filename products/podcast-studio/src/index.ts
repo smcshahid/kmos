@@ -13,4 +13,6 @@ export * from './transcript.js';
 export * from './chapters.js';
 export * from './evidence.js';
 export * from './acquisition.js';
+export * from './subtitles.js';
+export * from './clips.js';
 export { SAMPLE_TITLE, SAMPLE_TRANSCRIPT } from './sample.js';

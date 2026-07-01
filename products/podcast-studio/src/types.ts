@@ -56,6 +56,8 @@ export type StageId =
   | 'relate'
   | 'trust'
   | 'index'
+  | 'subtitles'
+  | 'clips'
   | 'package';
 
 export type StageStatus = 'pending' | 'running' | 'done' | 'skipped' | 'failed';
@@ -106,10 +108,18 @@ export interface Episode {
   translatedTranscript?: string;
   /** One-paragraph episode summary (added WP4). */
   summary?: string;
+  /** Notable moments with timestamps (added WP4). */
+  moments?: Moment[];
+  /** Subtitle tracks (WP3) — real, generated offline. */
+  subtitleSrt?: string;
+  subtitleVtt?: string;
+  /** Clip/reel plan (WP3) — render via ffmpeg on the estate. */
+  clips?: ClipSpec[];
   conceptIds: CanonicalId[];
-  /** KMOS Asset ids: source + transcript (+ subtitles/clips added later). */
+  /** KMOS Asset ids: source + transcript + subtitle. */
   sourceAssetId?: CanonicalId;
   transcriptAssetId?: CanonicalId;
+  subtitleAssetId?: CanonicalId;
   durationSec: number;
 }
 
@@ -146,4 +156,24 @@ export interface TrustView {
   readonly trusted: boolean;
   readonly score: number;
   readonly reasons: readonly string[];
+}
+
+export type ClipKind = 'chapter' | 'highlight';
+
+/** A clip specification — the deterministic plan of what to cut (render via ffmpeg). */
+export interface ClipSpec {
+  readonly id: string;
+  readonly title: string;
+  readonly startSec: number;
+  readonly endSec: number;
+  readonly kind: ClipKind;
+  readonly reason: string;
+}
+
+/** A notable moment in the episode, with a jump-to timestamp (added WP4). */
+export interface Moment {
+  readonly startSec: number;
+  readonly endSec: number;
+  readonly label: string;
+  readonly reason: string;
 }

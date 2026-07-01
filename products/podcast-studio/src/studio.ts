@@ -19,6 +19,8 @@ import { parseTranscript, segmentsToText, totalDuration } from './transcript.js'
 import { detectChapters } from './chapters.js';
 import { findEvidence } from './evidence.js';
 import { resolveSource, type TranscriptFetcher } from './acquisition.js';
+import { toSrt, toVtt } from './subtitles.js';
+import { chapterClips, highlightReel, type HighlightSpan } from './clips.js';
 import type {
   ConceptView, LineageNode, RelatedConcept, Episode, EpisodeKind, StageId, StageState, TrustView,
 } from './types.js';
@@ -45,6 +47,8 @@ const STAGE_DEFS: { id: StageId; label: string }[] = [
   { id: 'relate', label: 'Relationship discovery' },
   { id: 'trust', label: 'Trust assessment' },
   { id: 'index', label: 'Search indexing' },
+  { id: 'subtitles', label: 'Subtitles' },
+  { id: 'clips', label: 'Clips & reel' },
   { id: 'package', label: 'Packaging' },
 ];
 
@@ -270,6 +274,32 @@ export class PodcastStudioService {
     this.startStage(ep, 'index', 'kmos', 'Indexing concepts for semantic search.');
     await this.p.search.rebuild();
     this.doneStage(ep, 'index');
+
+    // 9b) Subtitles — real SRT/VTT tracks (offline capability), registered with lineage.
+    this.startStage(ep, 'subtitles', 'projection', 'Generating SRT + VTT subtitle tracks.');
+    ep.subtitleSrt = toSrt(ep.segments);
+    ep.subtitleVtt = toVtt(ep.segments);
+    const subtitleAsset = await this.p.assets.registerAsset({
+      assetType: 'Document', mediaType: 'application/x-subrip', displayName: `${ep.title} — subtitles`,
+      organizationId: orgId, storageRef: { storageId: `${episodeId}/subtitles.srt`, backend: 'object' },
+      checksum: sha256(ep.subtitleSrt), content: new TextEncoder().encode(ep.subtitleSrt),
+      provenance: { origin: 'Ingested', originalSource: input.reference },
+    });
+    await this.p.assets.recordDerivation({ derivedAssetId: subtitleAsset.id, inputAssetIds: [transcriptAsset.id] });
+    ep.subtitleAssetId = subtitleAsset.id;
+    this.doneStage(ep, 'subtitles', 'done', `${ep.segments.length} cues.`);
+
+    // 9c) Clips + highlight reel — a deterministic cut plan (render via ffmpeg on the estate).
+    this.startStage(ep, 'clips', 'external', 'Planning chapter clips + a highlight reel (render via an ffmpeg capability).');
+    const spans: HighlightSpan[] = [];
+    for (const cid of ep.conceptIds.slice(0, 6)) {
+      const ko = this.p.knowledge.getKnowledge(cid);
+      if (!ko) continue;
+      const evq = findEvidence(ep.segments, ko.body.canonicalName, { maxQuotes: 1 })[0];
+      if (evq) spans.push({ startSec: evq.startSec, endSec: evq.endSec, label: ko.body.canonicalName });
+    }
+    ep.clips = [...chapterClips(ep.chapters), ...highlightReel(spans, ep.segments, { maxClips: 5 })];
+    this.doneStage(ep, 'clips', 'done', `${ep.clips.length} clips planned (${ep.chapters.length} chapter + highlight reel).`);
 
     // 10) Package — done.
     this.startStage(ep, 'package', 'kmos', 'Assembling knowledge products.');
