@@ -106,10 +106,21 @@ jobs:
         run: |
           mkdir -p dist/release
           V="${{ steps.meta.outputs.version }}"
+          # Olares REQUIRES OlaresManifest.yaml metadata.version == Chart.yaml version.
+          # Stamp BOTH files to the release version, then package (no --version override,
+          # which would desync the manifest). Note: `olaresManifest.version` is the manifest
+          # SCHEMA version (dotted key, unindented) and is intentionally left untouched.
+          stamp_and_package() {
+            d="$1"
+            sed -i -E "s/^version:.*/version: $V/; s/^appVersion:.*/appVersion: \"$V\"/" "$d/Chart.yaml"
+            sed -i -E "s/^  version:.*/  version: $V/; s/^  versionName:.*/  versionName: '$V'/" "$d/OlaresManifest.yaml"
+            echo "-- $d --"; grep -E "^version:" "$d/Chart.yaml"; grep -E "^  version:" "$d/OlaresManifest.yaml"
+            helm package "$d" -d dist/release
+          }
           # ALL THREE charts → the GitHub Release is the one place to get everything.
-          helm package deployment/olares                          --version "$V" --app-version "$V" -d dist/release
-          helm package products/knowledge-studio/deployment/olares --version "$V" --app-version "$V" -d dist/release
-          helm package products/podcast-studio/deployment/olares   --version "$V" --app-version "$V" -d dist/release
+          stamp_and_package deployment/olares
+          stamp_and_package products/knowledge-studio/deployment/olares
+          stamp_and_package products/podcast-studio/deployment/olares
           ( cd dist/release && sha256sum *.tgz > SHA256SUMS.txt )
           ls -l dist/release
 
