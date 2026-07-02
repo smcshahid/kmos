@@ -1,20 +1,18 @@
-name: Release (image + Olares package + GitHub Release)
+name: Ecosystem Release (KMOS + Knowledge Studio + Podcast Studio)
 
-# The authoritative end-to-end release automation (ESRI-02). On a version tag `v*`:
-#   verify → build & push the KMOS image → package the Olares Application Chart (.tgz)
-#   → create a GitHub Release with the chart, release notes, and checksums attached.
-# The GitHub Release becomes the authoritative download location — no manual packaging,
-# no repository spelunking.
+# The authoritative end-to-end ECOSYSTEM release automation (EPT-01). On a version tag
+# `v*`: verify → build & push all three images (KMOS, Knowledge Studio, Podcast Studio)
+# → package the Olares Application Chart (.tgz) → create ONE GitHub Release with the
+# chart, ecosystem release notes, and checksums attached. The GitHub Release is the
+# authoritative download location — no manual packaging, no repository spelunking.
 #
-# Requires repository secrets DOCKERHUB_USERNAME + DOCKERHUB_TOKEN for the image push.
-# App images (Knowledge Studio, Podcast Studio) follow the same pattern in their own
-# release-*-image workflows; add their Olares charts here as they are published to Olares.
+# Requires repository secrets DOCKERHUB_USERNAME + DOCKERHUB_TOKEN.
 
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Version (e.g. 1.0.1)'
+        description: 'Ecosystem version (e.g. 1.1.0)'
         required: true
   push:
     tags: ['v*']
@@ -24,7 +22,7 @@ permissions:
 
 jobs:
   verify:
-    name: Verify (static + tests)
+    name: Verify (static + tests + conformance)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -38,7 +36,7 @@ jobs:
       - run: npm run conformance
 
   release:
-    name: Build image, package chart, publish release
+    name: Build images, package chart, publish ecosystem release
     runs-on: ubuntu-latest
     needs: verify
     steps:
@@ -68,7 +66,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push KMOS image
+      - name: Build & push KMOS image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -79,35 +77,62 @@ jobs:
             docker.io/${{ steps.meta.outputs.ns }}/kmos:${{ steps.meta.outputs.version }}
             docker.io/${{ steps.meta.outputs.ns }}/kmos:latest
 
+      - name: Build & push Knowledge Studio image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: products/knowledge-studio/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            docker.io/${{ steps.meta.outputs.ns }}/knowledge-studio:${{ steps.meta.outputs.version }}
+            docker.io/${{ steps.meta.outputs.ns }}/knowledge-studio:latest
+
+      - name: Build & push Podcast Studio image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: products/podcast-studio/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            docker.io/${{ steps.meta.outputs.ns }}/podcast-studio:${{ steps.meta.outputs.version }}
+            docker.io/${{ steps.meta.outputs.ns }}/podcast-studio:latest
+
       - uses: azure/setup-helm@v4
         with: { version: 'v3.15.0' }
 
-      - name: Package Olares Application Chart (.tgz)
-        id: pkg
+      - name: Package Olares Application Chart (.tgz) + checksums
         run: |
           mkdir -p dist/release
-          # Stamp the chart version to the release version, then package.
           helm package deployment/olares --version "${{ steps.meta.outputs.version }}" \
             --app-version "${{ steps.meta.outputs.version }}" -d dist/release
           ( cd dist/release && sha256sum *.tgz > SHA256SUMS.txt )
           ls -l dist/release
 
-      - name: Assemble release notes
+      - name: Assemble ecosystem release notes
         run: |
+          V="${{ steps.meta.outputs.version }}"; NS="${{ steps.meta.outputs.ns }}"
           {
-            echo "# KMOS v${{ steps.meta.outputs.version }}"
+            echo "# KMOS Ecosystem v$V"
             echo
-            echo "Image: \`docker.io/${{ steps.meta.outputs.ns }}/kmos:${{ steps.meta.outputs.version }}\`"
+            echo "The first complete ecosystem release: the KMOS platform plus its two flagship applications."
             echo
-            echo "Artifacts: Olares Application Chart (.tgz) + SHA256SUMS.txt attached below."
-            echo "Install on Olares from the attached chart; see documentation/OLARES-DEPLOYMENT-GUIDE.md."
+            echo "## Images (Docker Hub, amd64)"
+            echo "- \`docker.io/$NS/kmos:$V\`"
+            echo "- \`docker.io/$NS/knowledge-studio:$V\`"
+            echo "- \`docker.io/$NS/podcast-studio:$V\`"
+            echo
+            echo "## Install on Olares"
+            echo "Download the attached Olares Application Chart (.tgz) and verify against SHA256SUMS.txt."
+            echo "See documentation/OLARES-DEPLOYMENT-GUIDE.md. Full notes: documentation/RELEASE-NOTES.md."
           } > dist/release/NOTES.md
 
       - name: Create GitHub Release with artifacts
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: KMOS v${{ steps.meta.outputs.version }}
+          name: KMOS Ecosystem v${{ steps.meta.outputs.version }}
           body_path: dist/release/NOTES.md
           files: |
             dist/release/*.tgz
@@ -115,5 +140,5 @@ jobs:
 
       - name: Summary
         run: |
-          echo "Image: docker.io/${{ steps.meta.outputs.ns }}/kmos:${{ steps.meta.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "Chart + checksums attached to the GitHub Release." >> "$GITHUB_STEP_SUMMARY"
+          echo "Images: kmos, knowledge-studio, podcast-studio @ ${{ steps.meta.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Olares chart + checksums attached to the GitHub Release." >> "$GITHUB_STEP_SUMMARY"

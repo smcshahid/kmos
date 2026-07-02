@@ -262,6 +262,26 @@ can, without disturbing the eight fixed stars above.
 
 ---
 
+## Article XI — The Future Platform Rule (permanent)
+
+_Adopted at the close of Platform Phase 1 (EPT-01 / ADR-0018), the distilled lesson of every
+initiative that built this ecosystem:_
+
+> **No platform enhancement shall be undertaken unless demanded by a real application or
+> supported by clear evidence from multiple applications.**
+
+This makes explicit and permanent what Articles IV and IX already imply. It governs the
+Product Era: the platform and capability layer are mature, and future primary investment
+targets **applications**. Platform effort is reserved for **demand-pulled** work — capability
+extraction on second-consumer evidence, provider adapters a real product needs, and
+operations — never speculative growth, new frameworks, or redesign. Every proposed platform
+change must cite the real application requirement it serves; absent that, the answer is no.
+
+The kernel stays frozen; capabilities grow only on evidence; simplicity is defended by
+default. If a future change cannot name the product that needs it, it is not built.
+
+---
+
 _Ratification: proposed under KEAI-01 (2026-07-01). Companion documents: the
 [Ecosystem Capability White Paper](KEAI-01-ECOSYSTEM-CAPABILITY-WHITEPAPER.md),
 [Capability Inventory](KEAI-01-CAPABILITY-INVENTORY.md), and

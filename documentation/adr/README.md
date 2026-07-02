@@ -34,6 +34,7 @@ source of truth; these files are the stable, citable architectural record.
 | [0015](0015-podcast-studio-and-content-processing-spine-kcsi-02.md) | Podcast Studio and the Content Processing Spine (KCSI-02) | Accepted (executed) |
 | [0016](0016-provider-configuration-and-operational-readiness-esri-01.md) | Provider configuration model & operational readiness (ESRI-01) | Accepted (executed) |
 | [0017](0017-kmos-book-and-release-verification-esri-02.md) | The KMOS Book, verified release engineering & automated packaging (ESRI-02) | Accepted (executed) |
+| [0018](0018-platform-phase-1-close-and-product-era-ept-01.md) | Platform Phase 1 close, Product Era, and the Future Platform Rule (EPT-01) | Accepted-plan |
 
 ## Source decisions
 

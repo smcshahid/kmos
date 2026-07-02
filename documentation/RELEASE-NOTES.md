@@ -1,5 +1,38 @@
 # KMOS Release Notes
 
+## KMOS Ecosystem v1.1.0 — First complete ecosystem release
+
+_Date: 2026-07-02 (EPT-01)._ The first release of the ecosystem **as one thing** — the KMOS
+platform plus its two flagship applications — rather than independent projects. It closes
+**Platform Phase 1** and begins the **Product Era**.
+
+**Included (Docker images + Olares Application Chart, from the GitHub Release):**
+KMOS platform · Knowledge Studio · Podcast Studio.
+
+**Major architectural milestones (since v1.0.0 GA):**
+- **Capability layer established + proven** — `withFallback`, `@kmos/providers`, `@kmos/sdk`
+  (KCSI-01) and `@kmos/content-projections` (KCSI-02), each extracted on real evidence and
+  refactored across both flagship apps with identical behavior.
+- **Ecosystem architecture + constitution** (KEAI-01) — codified from four independently-built
+  systems that converged on the same architecture; the KMOS Book is now the primary handbook.
+- **Second flagship, mostly by composition** — Podcast Studio (KCSI-02) demonstrated that new
+  apps are assembled, not constructed.
+
+**Capability evolution:** provider-independent by contract; switching AI providers
+(Ollama ↔ OpenAI/Azure/Groq/DeepSeek/…) is **configuration, not code** (ESRI-01). The
+[Capability Evolution Roadmap](CAPABILITY-EVOLUTION-ROADMAP.md) records what is extracted, why,
+and what is deferred (with triggers).
+
+**Operational readiness:** self-verifying images; automated tag-triggered ecosystem release
+(images + Olares chart `.tgz` + checksums + notes); Olares-first + portable deployment; manual
+testing codified as the final, product-focused step. CI green on `main` (incl. `tsc` +
+real-PostgreSQL). Details: [ECOSYSTEM-STATUS](ECOSYSTEM-STATUS.md), [RELEASE-AND-DOCKER](RELEASE-AND-DOCKER.md).
+
+**Install:** download the Olares Application Chart from the GitHub Release (authoritative
+location); verify against `SHA256SUMS.txt`; see [OLARES-DEPLOYMENT-GUIDE](OLARES-DEPLOYMENT-GUIDE.md).
+
+---
+
 ## v1.0.0-rc — Release Candidate (library-grade)
 
 _Date: 2026-06-30_
