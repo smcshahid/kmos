@@ -78,6 +78,38 @@ consume directly — no extraction pending.
 
 ---
 
+## 4a. KEAI-01 ecosystem candidates (cross-application evidence)
+
+_Added by KEAI-01 (2026-07-01). Studying AIMPOS, Media Pipeline/MPP, and olares-one
+supplied **real second-consumer evidence** for capabilities KCSI-01 deferred. They stay
+**deferred** (evidence-first: nothing is built until a real KMOS consumer exists), but
+their triggers are now concrete, and their maturity is documented. Full analysis:
+`documentation/ecosystem/KEAI-01-CAPABILITY-INVENTORY.md` §C._
+
+| Capability | Maturity (reference systems) | Evidence | Why extract (rationale-in-waiting) | Why still deferred | Promotion trigger | Revisit when |
+|---|---|---|---|---|---|---|
+| **Source acquisition** (yt-dlp: URL/playlist/metadata/subtitle-detect) | Mature (media-pipeline `download.py`) | media-pipeline + Knowledge Studio both need it | Provider-replaceable, ≥2-app, removes app coupling | No KMOS media consumer built yet | First KMOS media/acquisition app | Media Pipeline on KMOS |
+| **Media processing** (ffmpeg: audio-extract/transcode/segment/clip) | Mature (`ffmpeg_ops.py`, `clipping.py`; AIMPOS mux) | media-pipeline heavy; KS needs audio-extract | Classic replaceable engine; ≥2-app | Same | First real ffmpeg adapter on KMOS | Media Pipeline on KMOS |
+| **Translation** (real MT provider) | Mature (`media_tools.py`, Ollama `hy-mt2`) | media-pipeline real provider; KS uses the contract | Contract already in KMOS; cheapest win | No real provider wired into KMOS yet | First real translation adapter on KMOS | **Near-term (low cost)** |
+| **Chunking / segmentation** | Mature (`chunking.py`, 5 strategies) | media-pipeline + any RAG app | Reusable text primitive | One KMOS consumer | Second app needs configurable chunking | Podcast/Research Studio |
+| **Subtitles** (SRT/VTT from timed transcript) | Mature (MPP subtitle tracks) | media-pipeline; AIMPOS planned | Reusable timed-text output | One KMOS consumer | Second app needs subtitle output | Media/Podcast on KMOS |
+| **Moment / clip intelligence** | Emerging (`moment_intelligence.py`, `repurpose.py`) | media-pipeline; future studios | LLM moment detection reused across media apps | Quality varies; one consumer | Second app needs moment detection | Podcast/Meeting Studio |
+| **Publishing / packaging** | Mature (media-pipeline exports; KS `downloads.ts`) | media-pipeline + Knowledge Studio | ≥2-app produce export/citation artifacts | Contract not yet shared | Second consumer needs same output type | Publishing/Media on KMOS |
+| **Storage tiering / preservation** (hot/warm/cold + IPFS content-address) | Mature design (MPP tiering + IPFS A1; `ipfs_client.py`) | media-pipeline core; any large-media app | Durability behind Assets locators; ≥2-app | **High data-risk**; needs real-target verification | First KMOS app with media at scale | Media Pipeline on KMOS (verify on real Olares) |
+| **Resilience / idempotency** (timeout/retry/backoff on adapters) | Mature pattern (olares-one; MPP adapters) | every provider adapter (cross-cutting) | Present gap in KCSI-01 adapters; genuinely cross-cutting | — (present evidence) | Second adapter needs resilience (already true) | **Near-term (refine `withFallback`)** |
+| **Provider quality-tiers + fail-closed** (refine fallback) | Mature (AIMPOS capability router) | AIMPOS engine selection; KCSI-01 `withFallback` | Correct richer fallback; validated by AIMPOS | — (refinement, not new capability) | Any capability with tiered providers | **Near-term (refine, don't rebuild)** |
+
+**Business-lifecycle event helper** (from MPP's `Identified→Registered→Enriched→
+Published→Archived`) — a good pattern; **deferred**, trigger: a second app needs explicit
+business-lifecycle transitions distinct from job state.
+
+**Explicitly NOT ecosystem capabilities (KEAI-01):** generative media (avatar/lip-sync/
+image-diffusion/i2v), creative authoring agents, and deployment glue (Jellyfin/Open WebUI
+integration) — application-specific; see `KEAI-01-CAPABILITY-INVENTORY.md` §D/§E. i2v is
+not production-ready by AIMPOS's own benchmark (14× slower, uncertified) — do not build.
+
+---
+
 ## 5. Change log
 
 | Date | Change |
@@ -89,6 +121,7 @@ consume directly — no extraction pending.
 | 2026-07-01 | WP4 landed: `@kmos/sdk` platform-substrate factory (`createPlatformRuntime[FromEnv]` + `hydratePlatformRuntime`); composes the 8 platform services + boot recovery. 4 tests pass incl. ADR-0011 recovery; fitness clean, 31 packages. |
 | 2026-07-01 | WP5 landed: Knowledge Studio refactored onto `@kmos/sdk` + `@kmos/providers`; `caption.ts` + `ollama-extraction.ts` deleted from the app. All 33 KS tests pass (identical behavior). App `src` 2052→1857 LOC (−9.5%), 15→13 files, direct `@kmos/*` deps 13→7; no provider HTTP logic remains in the app. |
 | 2026-07-01 | WP6 close-out: full suite 289 pass/1 skip/0 fail, fitness clean, conformance ALL COMPLIANT. Provider Guide + independent reviews + final assessment (review/20). ADR-0013 → Accepted (executed). KCSI-01 increment 01 complete. |
+| 2026-07-01 | KEAI-01: added §4a ecosystem candidates from AIMPOS/Media-Pipeline/olares-one evidence (acquisition, media-processing, translation, chunking, subtitles, moments, publishing, preservation, resilience, quality-tiers). All stay deferred (evidence-first) with concrete triggers; most unlock when Media Pipeline is built on KMOS. Ecosystem docs: `documentation/ecosystem/`. |
 
 _Maintenance rule: this file is updated in the **same** change that extracts a
 capability (add its §3 row + rationale), fires a trigger (move §4 → §3), or defers a
