@@ -6,7 +6,7 @@
 
 image:
   repository: malikshahid85/podcast-studio
-  tag: "1.1.1"
+  tag: ""   # empty → pulls the release-matched tag (Chart.AppVersion, stamped at release)
   pullPolicy: IfNotPresent
 
 # SHARED-DATABASE MODE (recommended): point Podcast Studio at the SAME PostgreSQL the

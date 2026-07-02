@@ -8,7 +8,7 @@ image:
   # Build+push from products/knowledge-studio/Dockerfile (see .github workflow).
   # NOT yet published — build and push before install, or point at your registry.
   repository: malikshahid85/knowledge-studio
-  tag: "1.1.1"
+  tag: ""   # empty → pulls the release-matched tag (Chart.AppVersion, stamped at release)
   pullPolicy: IfNotPresent
 
 # SHARED-DATABASE MODE (recommended): point Knowledge Studio at the SAME PostgreSQL
