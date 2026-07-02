@@ -3,7 +3,7 @@
 image:
   # Build+push from products/crawl-station/Dockerfile (see .github/workflows/release.yml).
   repository: malikshahid85/crawl-station
-  tag: "1.0.0"
+  tag: ""   # empty → pulls the release-matched tag (Chart.AppVersion, stamped at release)
   pullPolicy: IfNotPresent
 
 # SHARED-DATABASE MODE (recommended): point at the KMOS database for a shared event log.
