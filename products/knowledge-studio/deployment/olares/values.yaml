@@ -63,9 +63,18 @@ captionService:
     requests: { cpu: 100m, memory: 128Mi }
     limits: { cpu: "1", memory: 512Mi }
 
-# Richer concepts: point at your Olares Ollama for LLM-backed concept extraction
-# (provider-independent, behind the KMOS capability contract; falls back to the reference
-# extractor on any failure). Empty url → the offline reference extractor.
+# ── AI PROVIDER (provider-independent; switch by CONFIG, not code — see
+#    documentation/PROVIDER-GUIDE.md). The generic way to pick ANY provider at install.
+#    Leave provider empty for the offline deterministic reference (or use the ollama
+#    shortcut below). ──
+llm:
+  provider: ""     # reference | ollama | openai-compatible   (empty → reference / ollama shortcut)
+  baseUrl: ""      # ollama: http://ollama.<ns>:11434  ·  cloud: https://api.openai.com/v1 (or Groq/DeepSeek/OpenRouter/Azure/…)
+  model: ""        # e.g. llama3.1 · gpt-4o-mini · deepseek-chat
+  apiKey: ""       # SECRET — required for cloud providers; set at install, never in git
+
+# Legacy shortcut (still supported): point at your Olares Ollama. Equivalent to
+# llm.provider=ollama. If llm.provider is set above, it takes precedence.
 ollama:
   url: ""            # e.g. http://ollama.<ns>:11434
   model: "llama3.1"

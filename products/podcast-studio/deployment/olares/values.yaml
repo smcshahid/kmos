@@ -1,0 +1,47 @@
+# Podcast Studio Olares Application Chart — values.
+# PREPARED, NOT VALIDATED on a real Olares instance from the engineering environment.
+# Podcast Studio is a COMPANION to the KMOS deployment: a second stateless compute
+# deployable over the SAME shared PostgreSQL event log (one institutional memory; no
+# duplicate database).
+
+image:
+  repository: malikshahid85/podcast-studio
+  tag: "1.1.1"
+  pullPolicy: IfNotPresent
+
+# SHARED-DATABASE MODE (recommended): point Podcast Studio at the SAME PostgreSQL the
+# KMOS app uses. When empty, the chart falls back to the Olares-injected postgres.*
+# below (ISOLATED mode — Podcast Studio gets its own event log).
+databaseUrl: ""
+
+postgres:
+  host: postgres
+  port: 5432
+  username: podcast
+  password: changeme
+  databases:
+    podcast: podcast
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+# Attribution enforcement (CRIT-2). Off by default.
+enforce: false
+
+# ── AI PROVIDER (provider-independent; switch by CONFIG, not code — see
+#    documentation/PROVIDER-GUIDE.md). Set these at install to choose your LLM for
+#    concept extraction. Leave provider empty for the offline deterministic reference. ──
+llm:
+  provider: ""     # reference | ollama | openai-compatible   (empty → reference)
+  baseUrl: ""      # ollama: http://ollama.<ns>:11434  ·  cloud: https://api.openai.com/v1 (or Groq/DeepSeek/OpenRouter/Azure/…)
+  model: ""        # e.g. llama3.1 · gpt-4o-mini · deepseek-chat
+  apiKey: ""       # SECRET — required for cloud providers; set at install, never in git
+
+# Acquisition/ASR endpoint (PODCAST_TRANSCRIBE_ENDPOINT): a yt-dlp/Whisper/Speaches HTTP
+# service that returns a transcript for a source. Empty → paste a transcript.
+transcribeEndpoint: ""

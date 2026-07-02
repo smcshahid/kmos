@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: podcast-studio
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: podcast-studio
+spec:
+  replicas: 1   # in-memory read models + per-episode job cache are per-pod; do NOT scale beyond 1
+  selector:
+    matchLabels:
+      app: podcast-studio
+  template:
+    metadata:
+      labels:
+        app: podcast-studio
+    spec:
+      containers:
+        - name: podcast-studio
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8091
+          env:
+            - name: PORT
+              value: "8091"
+            # SHARED-DATABASE mode (recommended): explicit .Values.databaseUrl points
+            # Podcast Studio at the SAME PostgreSQL the KMOS app uses. When empty, fall
+            # back to the Olares-injected postgres.* (ISOLATED mode).
+            - name: KMOS_DATABASE_URL
+              value: {{ .Values.databaseUrl | default (printf "postgres://%s:%s@%s:%v/%s" .Values.postgres.username .Values.postgres.password .Values.postgres.host .Values.postgres.port .Values.postgres.databases.podcast) | quote }}
+            - name: KMOS_ENFORCE
+              value: "{{ .Values.enforce }}"
+            # AI provider — switch by CONFIG (PROVIDER-GUIDE.md). Empty provider → the
+            # offline deterministic reference extractor.
+            - name: KMOS_LLM_PROVIDER
+              value: {{ .Values.llm.provider | quote }}
+            - name: KMOS_LLM_BASE_URL
+              value: {{ .Values.llm.baseUrl | quote }}
+            - name: KMOS_LLM_MODEL
+              value: {{ .Values.llm.model | quote }}
+            - name: KMOS_LLM_API_KEY
+              value: {{ .Values.llm.apiKey | quote }}
+            # Acquisition/ASR endpoint (empty → paste a transcript).
+            - name: PODCAST_TRANSCRIBE_ENDPOINT
+              value: {{ .Values.transcribeEndpoint | quote }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 12
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

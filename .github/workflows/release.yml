@@ -102,11 +102,14 @@ jobs:
       - uses: azure/setup-helm@v4
         with: { version: 'v3.15.0' }
 
-      - name: Package Olares Application Chart (.tgz) + checksums
+      - name: Package Olares Application Charts (.tgz) + checksums
         run: |
           mkdir -p dist/release
-          helm package deployment/olares --version "${{ steps.meta.outputs.version }}" \
-            --app-version "${{ steps.meta.outputs.version }}" -d dist/release
+          V="${{ steps.meta.outputs.version }}"
+          # ALL THREE charts → the GitHub Release is the one place to get everything.
+          helm package deployment/olares                          --version "$V" --app-version "$V" -d dist/release
+          helm package products/knowledge-studio/deployment/olares --version "$V" --app-version "$V" -d dist/release
+          helm package products/podcast-studio/deployment/olares   --version "$V" --app-version "$V" -d dist/release
           ( cd dist/release && sha256sum *.tgz > SHA256SUMS.txt )
           ls -l dist/release
 
@@ -123,9 +126,15 @@ jobs:
             echo "- \`docker.io/$NS/knowledge-studio:$V\`"
             echo "- \`docker.io/$NS/podcast-studio:$V\`"
             echo
-            echo "## Install on Olares"
-            echo "Download the attached Olares Application Chart (.tgz) and verify against SHA256SUMS.txt."
-            echo "See documentation/OLARES-DEPLOYMENT-GUIDE.md. Full notes: documentation/RELEASE-NOTES.md."
+            echo "## Install on Olares — download these charts (attached below)"
+            echo "- **kmos-$V.tgz** — the KMOS platform (install first)"
+            echo "- **knowledge-studio-$V.tgz** — Knowledge Studio app"
+            echo "- **podcast-studio-$V.tgz** — Podcast Studio app"
+            echo "- **SHA256SUMS.txt** — checksums (verify with \`sha256sum -c SHA256SUMS.txt\`)"
+            echo
+            echo "In Olares Studio → Market → *Install a custom app* → upload each \`.tgz\`. Set your AI"
+            echo "provider at install (KMOS_LLM_PROVIDER/BASE_URL/MODEL/API_KEY) — see the Install guide."
+            echo "Full steps: documentation/INSTALL-ON-OLARES.md. Providers: documentation/PROVIDER-GUIDE.md."
           } > dist/release/NOTES.md
 
       - name: Create GitHub Release with artifacts
