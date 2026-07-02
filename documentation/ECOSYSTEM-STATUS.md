@@ -36,7 +36,7 @@ is the handbook, this is the status board._
 | | |
 |---|---|
 | **Docker** | Self-verifying images; **all three published + public at `1.1.0`**: `docker.io/malikshahid85/{kmos, knowledge-studio, podcast-studio}`. |
-| **GitHub Releases** | Authoritative download location. **"KMOS Ecosystem v1.1.0" released** (assets: `kmos-1.1.0.tgz` + `SHA256SUMS.txt`). Automated via `.github/workflows/release.yml` (tag `v*` → 3 images + Olares chart + checksums + notes). |
+| **GitHub Releases (install here)** | The **one** download location — each release attaches all three Olares charts (`kmos-*.tgz`, `knowledge-studio-*.tgz`, `podcast-studio-*.tgz`) + `SHA256SUMS.txt`. Automated via `.github/workflows/release.yml` (tag `v*`). **How to install + set providers: [INSTALL-ON-OLARES](INSTALL-ON-OLARES.md).** |
 | **Olares** | Reference target (validated on real Olares, ADR-0010/0011); Application Chart in `deployment/olares/`; portable to K8s via values. |
 
 ## AI providers

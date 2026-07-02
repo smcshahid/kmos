@@ -1,0 +1,81 @@
+# Podcast Studio — Olares Application Chart manifest (OlaresManifest.yaml).
+#
+# PREPARED, NOT VALIDATED: authored from the OlaresManifest spec (docs.olares.com →
+# Developer → Package → OlaresManifest); NOT installed/tested on a real Olares from the
+# engineering environment. Verify field names/values against YOUR Olares version and
+# test via Olares Studio before submission.
+#
+# Podcast Studio is a COMPANION application to the KMOS deployment: a second stateless
+# compute deployable over the SAME shared PostgreSQL event log — one institutional
+# memory across all apps (no duplicate database).
+
+olaresManifest.version: '0.10.0'
+olaresManifest.type: app
+
+metadata:
+  name: podcast-studio
+  appid: podcast-studio
+  title: Podcast Studio
+  description: >-
+    Drop a podcast in, leave with understanding. Turns a podcast/RSS/audio/YouTube
+    source into transcript, chapters, summary, concepts, evidence, quotes, clips, reels,
+    subtitles, translations, search, and a downloadable package — every concept grounded
+    in the exact moment it was said, with lineage and explainable trust. Built entirely
+    on KMOS; shares the KMOS PostgreSQL event log.
+  icon: https://raw.githubusercontent.com/smcshahid/kmos/main/deployment/olares/icon.png
+  version: 1.1.1
+  categories:
+    - Productivity
+    - Education
+
+# How users reach Podcast Studio. The app listens on 8091 (GET / UI, /health).
+entrances:
+  - name: podcast-studio
+    port: 8091
+    host: podcast-studio
+    title: Podcast Studio
+    authLevel: private
+    openMethod: default
+
+spec:
+  versionName: '1.1.1'
+  requiredMemory: 256Mi
+  limitedMemory: 1Gi
+  requiredCpu: 250m
+  limitedCpu: '1'
+  requiredDisk: 128Mi
+  limitedDisk: 1Gi
+  supportArch:
+    - amd64
+    - arm64
+
+# SHARED MEMORY WITH KMOS: the recommended deployment points Podcast Studio at the KMOS
+# app's PostgreSQL via .Values.databaseUrl (set at install), so all apps read/write ONE
+# canonical event log. The postgres middleware below is for ISOLATED mode only (Podcast
+# Studio gets its own database). Omit/override databaseUrl for sharing.
+middleware:
+  postgres:
+    username: podcast
+    databases:
+      - name: podcast
+        extensions:
+          - vectors
+
+permission:
+  appData: true
+  appCache: false
+  userData: []
+
+options:
+  dependencies:
+    - name: olares
+      version: '>=1.11.0-0'
+      type: system
+      mandatory: true
+    # Recommended: install the KMOS app first (shared platform + PostgreSQL).
+    - name: kmos
+      version: '>=1.0.0-0'
+      type: application
+      mandatory: false
+  analytics:
+    enabled: false

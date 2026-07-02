@@ -14,6 +14,7 @@ detail behind it. ESRI-01 — kept current to prevent drift.
 - **[Ecosystem Constitution](ecosystem/ECOSYSTEM-CONSTITUTION.md)** — the enduring principles.
 - **[Ecosystem Status](ECOSYSTEM-STATUS.md)** — the one-page dashboard: where the ecosystem is today.
 - **[Vision 2030](VISION-2030.md)** — the long-term direction (inspiration, not roadmap).
+- **[Install on Olares](INSTALL-ON-OLARES.md)** — where to download and how to install (from the GitHub Release) + how to set your AI provider. Start here to run it.
 - **[Platform Vision](PLATFORM-VISION.md)** — what KMOS is and why.
 
 ## Authoritative document per topic
@@ -42,7 +43,8 @@ detail behind it. ESRI-01 — kept current to prevent drift.
 | Versioning & compatibility | [VERSIONING-AND-COMPATIBILITY](VERSIONING-AND-COMPATIBILITY.md) |
 | Release notes | [RELEASE-NOTES](RELEASE-NOTES.md) |
 | Deployment (overview + decision) | [DEPLOYMENT-GUIDE](DEPLOYMENT-GUIDE.md) · [DEPLOYMENT-DECISION-GUIDE](DEPLOYMENT-DECISION-GUIDE.md) · [DEPLOYMENT-TARGETS](DEPLOYMENT-TARGETS.md) |
-| Olares deployment | [OLARES-DEPLOYMENT-GUIDE](OLARES-DEPLOYMENT-GUIDE.md) |
+| **Install on Olares (download + providers)** | [INSTALL-ON-OLARES](INSTALL-ON-OLARES.md) |
+| Olares deployment (runbook) | [OLARES-DEPLOYMENT-GUIDE](OLARES-DEPLOYMENT-GUIDE.md) |
 | Operations | [OPERATIONS-GUIDE](OPERATIONS-GUIDE.md) |
 | Upgrade / rollback | [UPGRADE-GUIDE](UPGRADE-GUIDE.md) |
 | Backup / disaster recovery | [BACKUP-AND-RESTORE](BACKUP-AND-RESTORE.md) · [DISASTER-RECOVERY](DISASTER-RECOVERY.md) |

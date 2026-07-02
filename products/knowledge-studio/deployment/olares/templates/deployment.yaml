@@ -38,7 +38,17 @@ spec:
             # explicit captionEndpoint (empty → YouTube asks for a pasted transcript).
             - name: KS_CAPTION_ENDPOINT
               value: {{ if .Values.captionService.enabled }}{{ printf "http://localhost:%v" .Values.captionService.port | quote }}{{ else }}{{ .Values.captionEndpoint | quote }}{{ end }}
-            # Richer concepts via Ollama (empty → offline reference extractor).
+            # AI provider — switch by CONFIG (PROVIDER-GUIDE.md). Generic selection of
+            # ANY provider; empty provider → the ollama shortcut / offline reference.
+            - name: KMOS_LLM_PROVIDER
+              value: {{ .Values.llm.provider | quote }}
+            - name: KMOS_LLM_BASE_URL
+              value: {{ .Values.llm.baseUrl | quote }}
+            - name: KMOS_LLM_MODEL
+              value: {{ .Values.llm.model | quote }}
+            - name: KMOS_LLM_API_KEY
+              value: {{ .Values.llm.apiKey | quote }}
+            # Legacy Ollama shortcut (used when KMOS_LLM_PROVIDER is empty).
             - name: OLLAMA_URL
               value: {{ .Values.ollama.url | quote }}
             - name: OLLAMA_MODEL
