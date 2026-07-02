@@ -1,11 +1,23 @@
 # KMOS Implementation Status
 
 _Living document. Evidence-based. Updated every work package._
-_Last updated: 2026-06-30_
+_Last updated: 2026-07-02_
 
 ## Current phase
 **M0-M6 COMPLETE — reference implementation CERTIFIED.** All seven milestones of
 the Master Roadmap are done. See `engineering/KMOS-CERTIFICATION-REPORT.md`.
+**Platform Phase 1 CLOSED; Product Era (EPT-01/ADR-0018).** The one-page live dashboard is
+`documentation/ECOSYSTEM-STATUS.md`.
+
+## Product Era progress
+- **CSTN-01 — CrawlStation (flagship #003), COMPLETE (2026-07-02, ADR-0019).** The web-
+  acquisition front-end: `products/crawl-station` (`@kmos/crawl-station-app`, port 8092), a
+  thin product over the substrate with **no domains** and **zero platform changes / zero new
+  capabilities** — the first proof of the Future Platform Rule. Web → KMOS: raw HTML `Asset`
+  (hashed evidence) → derived readable `Asset` (lineage) → `KnowledgeObject` (Topic) →
+  `References` relationship → `assessTrust` → search. Zero runtime deps; offline-tested crawl
+  engine + live end-to-end. Docker + Olares chart + `release.yml` (4th image). Full `npm run
+  verify` green: **340 tests / 0 fail**, fitness **0 violations**, **34 packages**.
 
 ## Milestone status
 

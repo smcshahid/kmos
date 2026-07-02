@@ -39,6 +39,7 @@
     "serve": "node --experimental-strip-types --import ./tools/dev/register.mjs applications/api-server/src/index.ts",
     "studio": "node --experimental-strip-types --import ./tools/dev/register.mjs products/knowledge-studio/src/index.ts",
     "podcast": "node --experimental-strip-types --import ./tools/dev/register.mjs products/podcast-studio/src/index.ts",
+    "crawl": "node --experimental-strip-types --import ./tools/dev/register.mjs products/crawl-station/src/index.ts",
     "conformance": "node --experimental-strip-types --import ./tools/dev/register.mjs scripts/conformance.mts"
   },
   "devDependencies": {

@@ -1,0 +1,34 @@
+# CrawlStation Olares Application Chart — values.
+
+image:
+  # Build+push from products/crawl-station/Dockerfile (see .github/workflows/release.yml).
+  repository: malikshahid85/crawl-station
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+# SHARED-DATABASE MODE (recommended): point at the KMOS database for a shared event log.
+# When set, this wins over the Olares-injected middleware postgres below.
+databaseUrl: ""
+
+# DEFAULT / ISOLATED MODE: Olares-injected middleware PostgreSQL.
+postgres:
+  host: postgres
+  port: 5432
+  username: crawl
+  password: changeme
+  databases:
+    crawl: crawl
+
+# Attribution enforcement (require an actor on every canonical write).
+enforce: false
+
+# User-agent presented to sites + robots.txt (identify yourself honestly).
+userAgent: "CrawlStation/1.0 (+https://kmos.local/crawl-station; respects robots.txt)"
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi

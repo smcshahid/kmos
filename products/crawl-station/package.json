@@ -1,0 +1,25 @@
+{
+  "name": "@kmos/crawl-station-app",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "CrawlStation — the KMOS ecosystem's acquisition front-end. Paste a URL, watch a live, transparent crawl, and leave with searchable, trustworthy knowledge: every page preserved as evidence with a content hash, readable content derived with lineage, each page a KnowledgeObject with explainable trust — all durable in KMOS. A thin product over the KMOS platform substrate (CSTN-01).",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@kmos/canonical-kernel": "*",
+    "@kmos/events": "*",
+    "@kmos/sdk": "*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "start": "node --experimental-strip-types --import ../../tools/dev/register.mjs src/index.ts",
+    "test": "node --experimental-strip-types --import ../../tools/dev/register.mjs --test test/*.test.ts"
+  }
+}

@@ -139,6 +139,12 @@ PROPOSED — awaiting human approval · ACCEPTED — confirmed · SUPERSEDED
 **Recommendation:** Shared-schema with mandatory org-id scoping behind repository ports.
 **Alternatives:** Schema-per-tenant; database-per-tenant.
 
+## D-019 — CrawlStation web-acquisition product (CSTN-01)
+**Status:** ACCEPTED (executed, 2026-07-02). See ADR-0019.
+**Context:** The ecosystem could *process* media but had no way to *acquire* knowledge from the open web. First application built under the Product Era (ADR-0018).
+**Decision:** Add `products/crawl-station` (`@kmos/crawl-station-app`, port 8092) — a thin product over the KMOS substrate with **no domains**. Web maps onto existing primitives: raw HTML → `Asset` (evidence, sha-256, provenance); readable content → derived `Asset` + `recordDerivation` (lineage); each page → `KnowledgeObject` (Topic); discovery path → `References` relationship; confidence → `Governance.assessTrust`; findability → `SearchService`. No new canonical objects/events. Crawl engine + HTML extraction + URL/robots rules stay **in the product** (zero-dep, offline-testable via injected `fetch`); promotion to a shared `@kmos/web-acquisition` capability is deferred until a second consumer (trigger recorded in CAPABILITY-EVOLUTION-ROADMAP).
+**Consequence:** A substantial new flagship shipped with **zero platform/kernel changes** — direct evidence for the Future Platform Rule (Ecosystem Constitution Art. XI). Full `npm run verify` green (340 tests, fitness clean). Robots.txt honored + per-host politeness by default; trust never fabricated.
+
 ---
 
 ## Assumptions (to revisit if contradicted)

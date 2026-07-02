@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: crawl-station
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: crawl-station
+spec:
+  selector:
+    app: crawl-station
+  ports:
+    - name: http
+      port: 8092
+      targetPort: http

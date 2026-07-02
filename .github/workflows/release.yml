@@ -1,7 +1,8 @@
-name: Ecosystem Release (KMOS + Knowledge Studio + Podcast Studio)
+name: Ecosystem Release (KMOS + Knowledge Studio + Podcast Studio + CrawlStation)
 
-# The authoritative end-to-end ECOSYSTEM release automation (EPT-01). On a version tag
-# `v*`: verify → build & push all three images (KMOS, Knowledge Studio, Podcast Studio)
+# The authoritative end-to-end ECOSYSTEM release automation (EPT-01, extended CSTN-01).
+# On a version tag `v*`: verify → build & push all four images (KMOS, Knowledge Studio,
+# Podcast Studio, CrawlStation)
 # → package the Olares Application Chart (.tgz) → create ONE GitHub Release with the
 # chart, ecosystem release notes, and checksums attached. The GitHub Release is the
 # authoritative download location — no manual packaging, no repository spelunking.
@@ -99,6 +100,17 @@ jobs:
             docker.io/${{ steps.meta.outputs.ns }}/podcast-studio:${{ steps.meta.outputs.version }}
             docker.io/${{ steps.meta.outputs.ns }}/podcast-studio:latest
 
+      - name: Build & push CrawlStation image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: products/crawl-station/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            docker.io/${{ steps.meta.outputs.ns }}/crawl-station:${{ steps.meta.outputs.version }}
+            docker.io/${{ steps.meta.outputs.ns }}/crawl-station:latest
+
       - uses: azure/setup-helm@v4
         with: { version: 'v3.15.0' }
 
@@ -117,10 +129,11 @@ jobs:
             echo "-- $d --"; grep -E "^version:" "$d/Chart.yaml"; grep -E "^  version:" "$d/OlaresManifest.yaml"
             helm package "$d" -d dist/release
           }
-          # ALL THREE charts → the GitHub Release is the one place to get everything.
+          # ALL FOUR charts → the GitHub Release is the one place to get everything.
           stamp_and_package deployment/olares
           stamp_and_package products/knowledge-studio/deployment/olares
           stamp_and_package products/podcast-studio/deployment/olares
+          stamp_and_package products/crawl-station/deployment/olares
           ( cd dist/release && sha256sum *.tgz > SHA256SUMS.txt )
           ls -l dist/release
 
@@ -130,17 +143,19 @@ jobs:
           {
             echo "# KMOS Ecosystem v$V"
             echo
-            echo "The first complete ecosystem release: the KMOS platform plus its two flagship applications."
+            echo "The KMOS platform plus its flagship applications, released together."
             echo
             echo "## Images (Docker Hub, amd64)"
             echo "- \`docker.io/$NS/kmos:$V\`"
             echo "- \`docker.io/$NS/knowledge-studio:$V\`"
             echo "- \`docker.io/$NS/podcast-studio:$V\`"
+            echo "- \`docker.io/$NS/crawl-station:$V\`"
             echo
             echo "## Install on Olares — download these charts (attached below)"
             echo "- **kmos-$V.tgz** — the KMOS platform (install first)"
             echo "- **knowledge-studio-$V.tgz** — Knowledge Studio app"
             echo "- **podcast-studio-$V.tgz** — Podcast Studio app"
+            echo "- **crawl-station-$V.tgz** — CrawlStation app (web acquisition front-end)"
             echo "- **SHA256SUMS.txt** — checksums (verify with \`sha256sum -c SHA256SUMS.txt\`)"
             echo
             echo "In Olares Studio → Market → *Install a custom app* → upload each \`.tgz\`. Set your AI"
@@ -160,5 +175,5 @@ jobs:
 
       - name: Summary
         run: |
-          echo "Images: kmos, knowledge-studio, podcast-studio @ ${{ steps.meta.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "Olares chart + checksums attached to the GitHub Release." >> "$GITHUB_STEP_SUMMARY"
+          echo "Images: kmos, knowledge-studio, podcast-studio, crawl-station @ ${{ steps.meta.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Olares charts + checksums attached to the GitHub Release." >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,90 @@
+# CrawlStation — Olares Application Chart manifest (OlaresManifest.yaml).
+#
+# PREPARED, NOT VALIDATED: authored from the OlaresManifest spec (docs.olares.com →
+# Developer → Package → OlaresManifest); NOT installed/tested on a real Olares from the
+# engineering environment. Verify field names/values against YOUR Olares version and
+# test via Olares Studio before submission.
+#
+# CrawlStation is a COMPANION application to the KMOS deployment: a stateless compute
+# deployable over the SAME shared PostgreSQL event log — one institutional memory across
+# the ecosystem (no duplicate database). It acquires web pages and turns them into
+# verifiable knowledge in KMOS. See ../../docs/DEPLOYMENT-GUIDE.md for the sharing modes.
+
+olaresManifest.version: '0.10.0'
+olaresManifest.type: app
+
+metadata:
+  name: crawl-station
+  appid: crawl-station
+  title: CrawlStation
+  description: >-
+    Point CrawlStation at the web and leave with trustworthy knowledge. It discovers
+    pages, respects robots.txt, preserves every page as verifiable evidence (content
+    hash + provenance), derives readable content with lineage, and turns each page into
+    searchable knowledge with explainable trust. Built entirely on KMOS; shares the KMOS
+    PostgreSQL event log.
+  icon: https://raw.githubusercontent.com/smcshahid/kmos/main/deployment/olares/icon.png
+  version: 1.0.0
+  categories:
+    - Productivity
+    - Utilities
+
+# How users reach CrawlStation. The app listens on 8092 (GET / UI, /health).
+entrances:
+  - name: crawl-station
+    port: 8092
+    host: crawl-station
+    title: CrawlStation
+    authLevel: private
+    openMethod: default
+
+spec:
+  versionName: '1.0.0'
+  requiredMemory: 256Mi
+  limitedMemory: 1Gi
+  requiredCpu: 250m
+  limitedCpu: '1'
+  requiredDisk: 128Mi
+  limitedDisk: 1Gi
+  supportArch:
+    - amd64
+    - arm64
+
+# SHARED MEMORY WITH KMOS: the recommended deployment points CrawlStation at the KMOS
+# app's PostgreSQL via .Values.databaseUrl (set at install), so the ecosystem reads and
+# writes ONE canonical event log. Declaring postgres middleware here is only for ISOLATED
+# mode (CrawlStation gets its own database). Keep this block for an isolated instance;
+# omit/override databaseUrl for sharing.
+middleware:
+  postgres:
+    username: crawl
+    databases:
+      - name: crawl
+        extensions:
+          - vectors
+
+permission:
+  appData: true
+  appCache: false
+  userData: []
+
+options:
+  # CrawlStation needs outbound internet egress to fetch the sites it acquires.
+  policies:
+    - uri: '*'
+      level: public
+      oneTime: false
+      valid_duration: 0s
+      description: Outbound HTTP(S) to acquire user-requested websites (honors robots.txt).
+  dependencies:
+    - name: olares
+      version: '>=1.11.0-0'
+      type: system
+      mandatory: true
+    # Recommended: install the KMOS app first (shared platform + PostgreSQL).
+    - name: kmos
+      version: '>=1.0.0-0'
+      type: application
+      mandatory: false
+  analytics:
+    enabled: false
