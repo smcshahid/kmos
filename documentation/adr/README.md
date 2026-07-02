@@ -31,6 +31,7 @@ source of truth; these files are the stable, citable architectural record.
 | [0012](0012-architecture-freeze-and-application-driven-evolution.md) | Architecture Freeze v1.0: kernel protected; application-driven evolution | Accepted |
 | [0013](0013-provider-capability-extraction-kcsi-01.md) | Provider-independent capability extraction from Knowledge Studio (KCSI-01) | Accepted (executed) |
 | [0014](0014-ecosystem-architecture-and-constitution-keai-01.md) | KMOS Ecosystem Architecture, Constitution, and evidence-first growth (KEAI-01) | Proposed |
+| [0015](0015-podcast-studio-and-content-processing-spine-kcsi-02.md) | Podcast Studio and the Content Processing Spine (KCSI-02) | Accepted (executed) |
 
 ## Source decisions
 

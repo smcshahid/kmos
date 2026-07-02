@@ -1,14 +1,11 @@
 /**
- * Transcript parsing (pure projection — no KMOS, no side effects).
+ * Transcript parsing (pure projection — no side effects).
  *
- * Turns raw transcript text into timestamped {@link TranscriptSegment}s, the atomic
- * unit that evidence quotes point at. Supports three honest input shapes:
+ * Turns raw transcript text into timestamped {@link TranscriptSegment}s. Supports:
  *   1. WebVTT / SRT-style cues  (`00:00:12.000 --> 00:00:15.000`)  — exact timing
  *   2. Leading-timestamp lines  (`[00:12:34] text`, `12:34 text`)  — exact timing
  *   3. Plain prose                                                  — ESTIMATED timing
- *
- * When timing is estimated we mark `timedExactly: false` so the UI can be honest
- * ("estimated moment"), never claiming precision we don't have.
+ * Estimated timing is marked `timedExactly: false` so callers stay honest.
  */
 
 import type { TranscriptSegment } from './types.js';
@@ -93,7 +90,6 @@ function parseLeadingTimestamps(text: string): Timed[] {
     const m = LEADING_TS.exec(line);
     if (m && m[1] !== undefined && m[2] !== undefined) out.push({ startSec: parseTimecode(m[1]), text: m[2].trim() });
   }
-  // Only treat as timestamped when the majority of non-empty lines carried a stamp.
   const nonEmpty = text.split('\n').filter((l) => l.trim().length > 0).length;
   return out.length >= Math.max(2, Math.ceil(nonEmpty * 0.6)) ? out : [];
 }

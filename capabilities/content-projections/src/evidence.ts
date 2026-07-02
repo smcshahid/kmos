@@ -1,12 +1,10 @@
 /**
- * Evidence grounding (pure projection — no KMOS, no side effects).
+ * Evidence grounding (pure projection — no side effects).
  *
- * Given a concept term and the source transcript, find the exact passages where
- * the concept is discussed, each with a jump-to-moment timestamp. This is a READ-
- * TIME PROJECTION over the transcript Asset that KMOS already records as the
- * concept's evidence ref — we surface *where* the idea appears; we never fabricate
- * a quote. A concept with no locatable passage returns no evidence (the UI then
- * marks it honestly as low-evidence rather than inventing one).
+ * Given a concept term and the source transcript, find the exact passages where the
+ * concept is discussed, each with a jump-to-moment timestamp. A read-time projection —
+ * we surface *where* the idea appears; we never fabricate a quote. A term with no
+ * locatable passage returns no evidence (callers then mark it honestly).
  */
 
 import type { EvidenceQuote, TranscriptSegment } from './types.js';
@@ -40,7 +38,6 @@ export function findEvidence(
     for (const w of words) {
       if (new RegExp(`\\b${escapeRegExp(w)}\\b`).test(hay)) score += 10;
     }
-    // Slightly prefer shorter, quotable segments among equal matches.
     if (score > 0) {
       score += Math.max(0, 5 - Math.floor(wordCount(seg.text) / 25));
       scored.push({ seg, score });

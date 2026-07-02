@@ -1,0 +1,19 @@
+{
+  "name": "@kmos/content-projections",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pure content projections shared by KMOS applications: transcript parsing + timecodes, chapter detection, and evidence grounding. Deterministic, dependency-free read-time projections over a transcript. Extracted from Knowledge Studio + Podcast Studio (KCSI-02) once two applications proved the need.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --experimental-strip-types --import ../../tools/dev/register.mjs --test test/*.test.ts"
+  }
+}

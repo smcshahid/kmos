@@ -59,6 +59,7 @@ marked `pending WP<n>` until their work package lands green.
 | **LLM knowledge-extraction adapter** (Ollama) | `@kmos/providers` | `KnowledgeExtraction` (existing) | A complete, tested provider adapter (`ollama-extraction.ts`) is trapped in the application behind the existing extraction contract; every knowledge app re-implements the same HTTP-to-LLM adapter. Reuse is concrete, not hypothetical. | **KCSI-01 WP2 (landed)** |
 | **Speech-transcription / caption-acquisition adapter** (HTTP: yt-dlp/Whisper/Speaches) | `@kmos/providers` | `Transcription` (existing) | The caption/ASR HTTP adapter (`caption.ts` + `youtube.ts` + `studio.ts:211‑240`) is a reusable transcription/acquisition seam trapped in the app; extraction also resolves a live sync/async `CaptionFetcher` type-smell (`youtube.ts:19` vs `caption.ts:20`). | **KCSI-01 WP3 (landed)** |
 | **Platform-substrate SDK** (`createPlatformRuntime`) | `@kmos/sdk` | Composition factory over `platform/*` | `platform.ts:47‑102` is the durable/in-memory + boot-hydration substrate boilerplate **every** KMOS deployable must repeat verbatim (the `applications/*` reference apps each re-do a variant); it is the most-duplicated, most error-prone, purely platform-layer code. | **KCSI-01 WP4 (landed)** |
+| **Content projections** (transcript parse/timecodes, chapter detection, evidence grounding) | `@kmos/content-projections` | Pure, kernel-only functions + `TranscriptSegment`/`Chapter`/`EvidenceQuote` types | These were app-local in Knowledge Studio, then re-implemented **byte-for-byte** in Podcast Studio (KCSI-02). Two independent consumers of identical pure logic is the textbook second-consumer signal. Both apps now import it; the duplication is deleted; behavior identical (321-test full suite green). | **KCSI-02 WP7 (landed)** |
 
 ## 4. Deferred capabilities (not built — with promotion triggers)
 
@@ -103,6 +104,14 @@ their triggers are now concrete, and their maturity is documented. Full analysis
 Published→Archived`) — a good pattern; **deferred**, trigger: a second app needs explicit
 business-lifecycle transitions distinct from job state.
 
+**KCSI-02 single-consumer candidates (Podcast Studio only — kept in the app):** subtitles
+(SRT/VTT), extractive summary, moment detection, clip/reel planning, publishing/package
+renderers, RSS acquisition, and the episode/job-persistence pattern. Each is real and
+working, but has **one** consumer today, so per Article IV it stays in the app. Promotion
+trigger for all: **a second application needs the same output/behavior** — then extract
+(publishing/persistence likely to `domains/publishing` / an app-tier `@kmos/app-kit`;
+subtitles/summary/moments/clips to a capability). See `engineering/review/21-KCSI-02-CLOSEOUT.md` §2.2.
+
 **Explicitly NOT ecosystem capabilities (KEAI-01):** generative media (avatar/lip-sync/
 image-diffusion/i2v), creative authoring agents, and deployment glue (Jellyfin/Open WebUI
 integration) — application-specific; see `KEAI-01-CAPABILITY-INVENTORY.md` §D/§E. i2v is
@@ -122,6 +131,8 @@ not production-ready by AIMPOS's own benchmark (14× slower, uncertified) — do
 | 2026-07-01 | WP5 landed: Knowledge Studio refactored onto `@kmos/sdk` + `@kmos/providers`; `caption.ts` + `ollama-extraction.ts` deleted from the app. All 33 KS tests pass (identical behavior). App `src` 2052→1857 LOC (−9.5%), 15→13 files, direct `@kmos/*` deps 13→7; no provider HTTP logic remains in the app. |
 | 2026-07-01 | WP6 close-out: full suite 289 pass/1 skip/0 fail, fitness clean, conformance ALL COMPLIANT. Provider Guide + independent reviews + final assessment (review/20). ADR-0013 → Accepted (executed). KCSI-01 increment 01 complete. |
 | 2026-07-01 | KEAI-01: added §4a ecosystem candidates from AIMPOS/Media-Pipeline/olares-one evidence (acquisition, media-processing, translation, chunking, subtitles, moments, publishing, preservation, resilience, quality-tiers). All stay deferred (evidence-first) with concrete triggers; most unlock when Media Pipeline is built on KMOS. Ecosystem docs: `documentation/ecosystem/`. |
+| 2026-07-01 | KCSI-02 WP7: extracted **content projections** (transcript/chapters/evidence) to `@kmos/content-projections` once Podcast Studio became the second consumer; refactored BOTH Knowledge Studio and Podcast Studio onto it (byte-identical duplication deleted; full suite 320 pass/0 fail; fitness clean, 33 packages). App-only outputs (subtitles, summary, moments, clips, publishing) remain in Podcast Studio — still single-consumer; recorded as candidates with triggers. |
+| 2026-07-01 | KCSI-02 close-out (review/21): Podcast Studio V1 shipped (complete product); conformance COMPLIANT. Capability assessment + final recommendation — **make application development the primary focus** for the knowledge/media-light app family; the media-provider initiative (ffmpeg/translation/preservation) is demand-pulled by a future media-heavy app. ADR-0015 → Accepted (executed). |
 
 _Maintenance rule: this file is updated in the **same** change that extracts a
 capability (add its §3 row + rationale), fires a trigger (move §4 → §3), or defers a

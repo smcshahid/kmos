@@ -17,6 +17,7 @@
     { "path": "engines/observability" },
     { "path": "capabilities/reference-capabilities" },
     { "path": "capabilities/providers" },
+    { "path": "capabilities/content-projections" },
     { "path": "sdk/sdk" },
     { "path": "domains/media" },
     { "path": "domains/language" },
@@ -31,6 +32,7 @@
     { "path": "applications/public-api" },
     { "path": "applications/learning-platform" },
     { "path": "applications/api-server" },
-    { "path": "products/knowledge-studio" }
+    { "path": "products/knowledge-studio" },
+    { "path": "products/podcast-studio" }
   ]
 }
