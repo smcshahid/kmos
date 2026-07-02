@@ -1,6 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import http from 'node:http';
 import { createPodcastPlatform } from '../src/platform.ts';
 import { PodcastStudioService } from '../src/studio.ts';
 import { createPodcastServer } from '../src/http.ts';
