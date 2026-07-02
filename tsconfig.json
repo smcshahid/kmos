@@ -33,6 +33,7 @@
     { "path": "applications/learning-platform" },
     { "path": "applications/api-server" },
     { "path": "products/knowledge-studio" },
-    { "path": "products/podcast-studio" }
+    { "path": "products/podcast-studio" },
+    { "path": "products/crawl-station" }
   ]
 }

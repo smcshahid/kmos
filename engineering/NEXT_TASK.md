@@ -1,6 +1,23 @@
 # KMOS - Next Task
 
-_Last updated: 2026-07-01_
+_Last updated: 2026-07-02_
+
+## Current: CSTN-01 CrawlStation — COMPLETE (flagship #003), on `feat/cstn-01-crawlstation`
+The ecosystem's acquisition front-end: paste a URL → a transparent, polite crawl →
+verifiable knowledge in KMOS (raw HTML preserved as hashed evidence, readable content
+derived with lineage, each page a `KnowledgeObject`, discovery path as relationships,
+explainable trust, search). Built **entirely on the frozen substrate — zero platform
+changes, zero new capabilities** (first proof of the Future Platform Rule, ADR-0019).
+Zero runtime deps; crawl engine (frontier/extract/robots/urls) is pure + offline-tested via
+injected `fetch`; also verified live over real sockets end-to-end. Packaged (Docker + Olares
+chart) and wired into `release.yml`. Full `npm run verify` green: 340 tests / 0 fail, fitness
+clean, 34 packages. See ADR-0019, `products/crawl-station/`, D-019.
+**Next (product-first, demand-pulled):** grow CrawlStation from real usage, or start the next
+application; extract `@kmos/web-acquisition` only when a **second** consumer appears (trigger
+recorded in CAPABILITY-EVOLUTION-ROADMAP §4).
+
+---
+_(prior status retained below)_
 
 ## Current: KCSI-01 Capability Extraction — COMPLETE (increment 01), on `feat/kcsi-01-capability-extraction`
 Evidence-first extraction of the seams Knowledge Studio proved: `withFallback`

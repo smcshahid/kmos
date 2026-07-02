@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crawl-station
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: crawl-station
+spec:
+  replicas: 1   # in-memory read models + per-crawl job cache are per-pod; do NOT scale beyond 1
+  selector:
+    matchLabels:
+      app: crawl-station
+  template:
+    metadata:
+      labels:
+        app: crawl-station
+    spec:
+      containers:
+        - name: crawl-station
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8092
+          env:
+            - name: PORT
+              value: "8092"
+            # SHARED-DATABASE mode (recommended): explicit .Values.databaseUrl points
+            # CrawlStation at the SAME PostgreSQL the KMOS app uses — one shared
+            # institutional memory (durable event log + crawl state). When empty, fall
+            # back to the Olares-injected postgres.* (ISOLATED mode). Verify the exact
+            # injected keys against your Olares version.
+            - name: KMOS_DATABASE_URL
+              value: {{ .Values.databaseUrl | default (printf "postgres://%s:%s@%s:%v/%s" .Values.postgres.username .Values.postgres.password .Values.postgres.host .Values.postgres.port .Values.postgres.databases.crawl) | quote }}
+            - name: KMOS_ENFORCE
+              value: "{{ .Values.enforce }}"
+            - name: CS_USER_AGENT
+              value: {{ .Values.userAgent | quote }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 12
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

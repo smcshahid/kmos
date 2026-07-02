@@ -12,7 +12,7 @@ is the handbook, this is the status board._
 | **Current version** | Ecosystem **v1.1.0** (platform + capability layer + 2 flagships). Kernel v1.0.0 frozen. |
 | **Phase** | **Platform Phase 1 CLOSED**; organization in the **Product Era** (EPT-01). |
 | **CI** | Green on `main` (static: lint · fitness · `tsc` · audit; tests: unit · contract · security · integration · perf · certification · conformance · demo; database: real PostgreSQL). |
-| **Packages** | 33 workspace packages; architecture-fitness **0 violations**. |
+| **Packages** | 34 workspace packages; architecture-fitness **0 violations**. |
 
 ## Capability layer
 
@@ -29,14 +29,15 @@ is the handbook, this is the status board._
 |---|---|---|
 | **Knowledge Studio** | Complete (flagship #1) | Media → verifiable, navigable knowledge |
 | **Podcast Studio** | Complete (flagship #2) | Podcasts/audio → transcript, chapters, summary, concepts, evidence, clips, subtitles, package |
+| **CrawlStation** | Complete (flagship #3, CSTN-01 / ADR-0019) | The acquisition front-end — websites → evidence (hashed + provenance), lineage, searchable knowledge, explainable trust. First Product-Era app; **zero platform changes**. |
 | Reference apps | present | thin demonstrations (research-portal, archive-explorer, administration, public-api, learning-platform, api-server) |
 
 ## Deployment
 
 | | |
 |---|---|
-| **Docker** | Self-verifying images; **all three published + public at `1.1.0`**: `docker.io/malikshahid85/{kmos, knowledge-studio, podcast-studio}`. |
-| **GitHub Releases (install here)** | The **one** download location — each release attaches all three Olares charts (`kmos-*.tgz`, `knowledge-studio-*.tgz`, `podcast-studio-*.tgz`) + `SHA256SUMS.txt`. Automated via `.github/workflows/release.yml` (tag `v*`). **How to install + set providers: [INSTALL-ON-OLARES](INSTALL-ON-OLARES.md).** |
+| **Docker** | Self-verifying images; **three published + public at `1.1.0`**: `docker.io/malikshahid85/{kmos, knowledge-studio, podcast-studio}`. CrawlStation (`crawl-station`) is wired into `release.yml` and ships with the next tagged ecosystem release. |
+| **GitHub Releases (install here)** | The **one** download location — each release attaches the Olares charts (`kmos-*.tgz`, `knowledge-studio-*.tgz`, `podcast-studio-*.tgz`, and `crawl-station-*.tgz` from the next tag) + `SHA256SUMS.txt`. Automated via `.github/workflows/release.yml` (tag `v*`). **How to install + set providers: [INSTALL-ON-OLARES](INSTALL-ON-OLARES.md).** |
 | **Olares** | Reference target (validated on real Olares, ADR-0010/0011); Application Chart in `deployment/olares/`; portable to K8s via values. |
 
 ## AI providers
@@ -51,7 +52,7 @@ is the handbook, this is the status board._
 
 | | |
 |---|---|
-| **Current organizational focus** | **Product-first.** Build applications; capabilities are pulled into existence by real product need (evidence-first). |
+| **Current organizational focus** | **Product-first.** Build applications; capabilities are pulled into existence by real product need (evidence-first). First Product-Era app **delivered: CrawlStation** (CSTN-01) with zero platform changes — direct evidence for the governing rule. |
 | **Platform investment** | Minimal / demand-pulled (~10%). Next likely capability initiative: media providers (ffmpeg/translation/preservation) — only when a media-heavy app pulls them. |
 | **Governing rule** | *No platform enhancement unless demanded by a real application or clear multi-application evidence* (Ecosystem Constitution Art. XI / ADR-0018). |
 

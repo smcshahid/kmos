@@ -33,6 +33,16 @@ _Last updated: 2026-06-30_
 | G-07 | Future family specs (11xx–19xx) not written | No | Deferred until core proves architecture |
 
 ## Technical debt
+- TD-CSTN-1 (CrawlStation): the extractor reads **server-delivered HTML**, not the
+  client-rendered DOM. Fully JS-rendered SPAs may extract thin content (honestly surfaced as
+  *needs review*). Promotion trigger for a headless-render capability: a real app that needs
+  JS-rendered acquisition. Do not add speculatively (ADR-0018).
+- TD-CSTN-2 (CrawlStation): **Re-crawl** starts fresh and registers new KMOS Assets/Knowledge
+  for pages seen before (no cross-run URL→object dedup). Acceptable for Phase 1; add
+  canonical-URL dedup in KMOS if repeated re-crawls of the same site become a real workflow.
+- TD-CSTN-3 (CrawlStation): read models + per-crawl cache are in-memory per pod (replicas: 1),
+  consistent with the rest of the ecosystem (ADR-0011 recovery on boot). Multi-replica HA is a
+  v1.x platform concern, not a product one.
 - TD-01: M0 ships an in-memory `EventLog` and in-process bus (modular-monolith-first, per D-C). The Postgres `EventLog` adapter + migrations land in WP-1 (Event Service). The kernel already exposes the `EventLog` port so this is a drop-in.
 - TD-02: The kernel uses a small zero-dependency schema validator (D-F). Sufficient for the canonical envelope/object structure; per-object-body schemas grow with each service.
 
