@@ -2,9 +2,13 @@
 
 ## Status
 
-**Accepted-plan** — final documentation & release-readiness initiative before shifting
-primary investment to products. Consistent with ADR-0012/0014/0016 and the Ecosystem
-Constitution. Plan: `engineering/ESRI-02-DOCUMENTATION-AND-RELEASE-READINESS-PLAN.md`.
+**Accepted** — executed 2026-07-02 (The KMOS Book shipped; CI fixed + **verified green** on a
+real run; automated `release.yml` authored; Docker Hub + release state audited with evidence).
+Close-out + Final Ecosystem Assessment:
+[`engineering/review/23-ESRI-02-CLOSEOUT.md`](../../engineering/review/23-ESRI-02-CLOSEOUT.md).
+Final documentation & release-readiness initiative before shifting primary investment to
+products. Consistent with ADR-0012/0014/0016 and the Ecosystem Constitution. Plan:
+`engineering/ESRI-02-DOCUMENTATION-AND-RELEASE-READINESS-PLAN.md`.
 
 ## Context
 
