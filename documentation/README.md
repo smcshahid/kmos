@@ -12,6 +12,8 @@ detail behind it. ESRI-01 — kept current to prevent drift.
 - **[Ecosystem Playbook](ecosystem/ECOSYSTEM-PLAYBOOK.md)** — the operational how-to for
   building on KMOS (human or AI).
 - **[Ecosystem Constitution](ecosystem/ECOSYSTEM-CONSTITUTION.md)** — the enduring principles.
+- **[Ecosystem Status](ECOSYSTEM-STATUS.md)** — the one-page dashboard: where the ecosystem is today.
+- **[Vision 2030](VISION-2030.md)** — the long-term direction (inspiration, not roadmap).
 - **[Platform Vision](PLATFORM-VISION.md)** — what KMOS is and why.
 
 ## Authoritative document per topic
