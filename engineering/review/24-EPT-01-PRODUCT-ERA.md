@@ -19,11 +19,17 @@ and passing CI end-to-end. Clean Conventional-Commit history; ADRs 0013–0017 c
 builds + pushes all three images (KMOS, Knowledge Studio, Podcast Studio), packages the Olares
 Application Chart `.tgz` + `SHA256SUMS.txt`, and creates ONE GitHub Release (the authoritative
 download) with notes. Ecosystem notes: [RELEASE-NOTES](../../documentation/RELEASE-NOTES.md).
-**Verification (evidence over assumption):** the release is executed by tagging `v1.1.0` after
-this initiative merges; the tag run is then confirmed green with images publicly pullable and
-the GitHub Release + assets present (prior evidence: KMOS + Knowledge Studio images already
-live/public on Docker Hub — ESRI-02 review/23 §1). If the run fails, fix → re-run → verify →
-document (Mission 3).
+**Verification (evidence over assumption) — DONE:** tag `v1.1.0` was pushed; the ecosystem
+release workflow run **completed successfully**. Confirmed with real calls:
+- ✅ GitHub Actions run: success.
+- ✅ Docker images published + public at `1.1.0`: `malikshahid85/{kmos, knowledge-studio,
+  podcast-studio}` (Docker Hub, pushed 2026-07-02 06:25–06:26 UTC).
+- ✅ Version tag `v1.1.0` exists.
+- ✅ GitHub Release "KMOS Ecosystem v1.1.0" created.
+- ✅ Release assets attached: `kmos-1.1.0.tgz` (Olares chart) + `SHA256SUMS.txt`.
+- ✅ Release notes generated.
+
+All Mission 3/4/5 checks pass. The GitHub Release is the authoritative download location.
 
 ## 3. Mission 11 — final operational checklist (status)
 
