@@ -1,77 +1,117 @@
-# KMOS Provider Guide
+# AI Provider Architecture & Configuration
 
-How to add a **provider** (a real technology behind a capability contract) and how an
-application consumes it — without the application ever knowing which provider runs.
+_The authoritative guide to provider independence in KMOS._ How capabilities stay stable
+while providers (local and cloud) come and go, and how to switch providers by
+**configuration, not code**. Established by KCSI-01 (`@kmos/providers`, `withFallback`) and
+made configurable by **ESRI-01 / [ADR-0016](adr/0016-provider-configuration-and-operational-readiness-esri-01.md)**.
 
-> Introduced by **KCSI-01**. Providers live in
-> [`@kmos/providers`](../capabilities/providers); applications compose the substrate
-> with [`@kmos/sdk`](../sdk/sdk) and inject providers into their domains. The
-> lifecycle of every provider capability is tracked in
-> [`CAPABILITY-EVOLUTION-ROADMAP.md`](CAPABILITY-EVOLUTION-ROADMAP.md).
+> **Principle (Ecosystem Constitution Art. V):** callers express intent (a capability),
+> never an engine. A factory selects the provider from config; fallback is *within* a
+> capability, never across. There is **no** provider registry or orchestration framework —
+> only adapters + a small config model.
 
-## 1. The model
+## 1. The three layers
 
-- A **capability contract** (e.g. `KnowledgeExtraction`, `Transcription` in
-  `@kmos/reference-capabilities`) is the stable business seam. It never changes when a
-  provider changes.
-- A **provider adapter** is a `CapabilityHandler` (or `ReferenceCapability`) that
-  satisfies a contract using a concrete technology (Ollama, an HTTP ASR service, …).
-- **Selection** is the application's one-line choice (usually "use provider X when
-  configured, else the reference default"). There is deliberately **no** registry,
-  discovery, or routing engine — none is warranted yet (ADR-0013; roadmap §4).
-- **Fallback / graceful degradation** is the shared `withFallback` primitive.
-
-## 2. Add a provider adapter
-
-```ts
-// capabilities/providers/src/knowledge-extraction/my-llm.ts
-import type { CapabilityHandler, ExtractionInput, ExtractionOutput, ReferenceCapability } from '@kmos/reference-capabilities';
-import { knowledgeExtraction, withFallback } from '@kmos/reference-capabilities';
-
-export function createMyLlmExtraction(opts: { url: string }): ReferenceCapability<ExtractionInput, ExtractionOutput> {
-  const provider: CapabilityHandler<ExtractionInput, ExtractionOutput> = {
-    health: () => 'Ready',
-    invoke: async (input) => ({ concepts: await callMyLlm(opts.url, input.text) }), // HTTP via global fetch
-  };
-  return {
-    descriptor: { /* name, ownerDomain, version, inputs/outputs, contract */ } as never,
-    // Graceful degradation: any error or empty result → the deterministic reference.
-    create: () => withFallback(provider, knowledgeExtraction.create(), { usable: (o) => o.concepts.length > 0 }),
-  };
-}
+```
+Application            reads generic config, injects a capability — NAMES NO PROVIDER
+   ↓
+Capability contract    the stable interface (e.g. KnowledgeExtraction: Transcript → Concept)
+   ↓
+Provider adapter       a concrete engine behind the contract (Ollama, OpenAI-compatible, HTTP ASR)
 ```
 
-Rules (enforced by fitness + conformance):
-- **Contract-only + kernel-only deps.** Depend on `@kmos/reference-capabilities`
-  (same layer) and the kernel — never a platform service or an upper layer.
-- **No provider SDK.** Use the global `fetch`; keep driver imports (if ever needed)
-  under an `infrastructure/` directory.
-- **Never throw for "unavailable."** Return an unusable result and let `withFallback`
-  (or the caller) degrade honestly.
-- **Version immutably.** New behavior ⇒ new descriptor `version`.
+When the provider changes, only the **adapter + config** change. The contract — and every
+application above it — does not.
 
-## 3. Consume it from an application
+## 2. Capabilities and their providers
 
-```ts
-import { createPlatformRuntimeFromEnv } from '@kmos/sdk';
-import { createMyLlmExtraction } from '@kmos/providers';
-import { LanguageDomainService } from '@kmos/language';
+| Capability | Contract | Providers today | Reachable by config/adapter |
+|---|---|---|---|
+| **Knowledge extraction** | `Transcript → Concept` | reference · **Ollama** · **OpenAI-compatible** | OpenAI, Azure OpenAI, Groq, DeepSeek, OpenRouter, Mistral, Together (all via the OpenAI-compatible adapter); Gemini / Claude / Bedrock native = a new adapter (§6) |
+| **Speech / transcription** | `audioRef → Transcript` (HTTP ASR) | HTTP endpoint (**Speaches / Whisper**) | Azure Speech, Deepgram, any ASR that speaks the tiny HTTP contract, or a new adapter |
+| **Translation** | `text, lang → text` | reference only | OpenAI-compatible / Gemini / Azure Translator / DeepL = a new adapter (§6) |
 
-const rt = await createPlatformRuntimeFromEnv({ enforce: true });
-const extraction = process.env.MY_LLM_URL ? createMyLlmExtraction({ url: process.env.MY_LLM_URL }) : undefined;
-const language = new LanguageDomainService({
-  bus: rt.bus, knowledge: rt.knowledge, registry: rt.registry, runtime: rt.runtime,
-  ...(extraction ? { extraction } : {}),   // inject — the app never imports the provider's HTTP
-});
+**Knowledge extraction is the worked proof:** two real adapters (Ollama, OpenAI-compatible)
+selected by config. Speech is already provider-agnostic (the endpoint *is* the provider).
+Translation has one (reference) — its extension point is documented in §6.
+
+## 3. The configuration model
+
+`KnowledgeExtractionConfig` (`@kmos/providers`):
+
+| Field | Meaning |
+|---|---|
+| `provider` | `reference` \| `ollama` \| `openai-compatible` |
+| `baseUrl` | endpoint (Ollama root, or the OpenAI-compatible base incl. version path) |
+| `model` | model / deployment name |
+| `apiKey` | secret (resolved from a secret reference / env — never hardcoded) |
+| `maxConcepts`, `timeoutMs`, `headers` | tuning + provider-specific headers (e.g. Azure) |
+
+`createKnowledgeExtractionFromConfig(cfg)` returns the adapter (composed with fallback to
+the reference), or `undefined` for `reference` (the domain then uses its built-in reference).
+`extractionConfigFromEnv()` maps environment → config.
+
+## 4. Environment variables & profiles
+
+| Variable | Effect |
+|---|---|
+| `KMOS_LLM_PROVIDER` | `reference` \| `ollama` \| `openai-compatible` |
+| `KMOS_LLM_BASE_URL` | endpoint (e.g. `http://ollama:11434`, `https://api.openai.com/v1`, `https://api.groq.com/openai/v1`) |
+| `KMOS_LLM_MODEL` | model / deployment (e.g. `llama3.1`, `gpt-4o-mini`, `deepseek-chat`) |
+| `KMOS_LLM_API_KEY` | secret (cloud providers) |
+| `KMOS_LLM_MAX_CONCEPTS`, `KMOS_LLM_TIMEOUT_MS` | tuning |
+| `OLLAMA_URL` (+ `OLLAMA_MODEL`) | legacy shortcut → the `ollama` provider (still supported) |
+| `KS_CAPTION_ENDPOINT` / `PODCAST_TRANSCRIBE_ENDPOINT` | Speech/ASR endpoint |
+
+**Profiles** are just env sets (deployment values / Olares Studio):
+
+- **Local-only:** `KMOS_LLM_PROVIDER=ollama`, `KMOS_LLM_BASE_URL=http://ollama.ollamaserver-shared:11434`.
+- **Cloud-only:** `KMOS_LLM_PROVIDER=openai-compatible`, `KMOS_LLM_BASE_URL=https://api.openai.com/v1`, `KMOS_LLM_API_KEY=secret://…`.
+- **Offline / reference:** unset (or `KMOS_LLM_PROVIDER=reference`) — deterministic, no network.
+- **Hybrid / fallback:** set a real provider; the adapter already **falls back to the
+  reference** on any error/empty output (graceful degradation). Provider→provider chains
+  compose via `withFallback(a, withFallback(b, reference))` when a real need appears.
+
+**Secrets:** API keys are secrets — inject at install (Olares Studio / K8s Secret / env),
+never in git or images. Use `secret://…` references where the Configuration Service resolves
+them.
+
+**Quality / cost tiers:** choose by `model` (and provider) — a small local model for
+draft/cheap, a larger cloud model for max quality. Tiering beyond model choice is added only
+when an application needs runtime multi-provider selection (it does not today).
+
+## 5. Switching providers (the proof)
+
+Switching Ollama → OpenAI/Azure/Groq/DeepSeek/… is **configuration only** — no application
+change:
+
+```bash
+# Local (Ollama)
+KMOS_LLM_PROVIDER=ollama            KMOS_LLM_BASE_URL=http://ollama:11434       KMOS_LLM_MODEL=llama3.1
+# OpenAI
+KMOS_LLM_PROVIDER=openai-compatible KMOS_LLM_BASE_URL=https://api.openai.com/v1 KMOS_LLM_MODEL=gpt-4o-mini KMOS_LLM_API_KEY=sk-…
+# Groq / DeepSeek / OpenRouter / Mistral / Together — same, different BASE_URL + MODEL + KEY
+# Azure OpenAI — BASE_URL=https://<res>.openai.azure.com/openai/deployments/<dep>  + headers {'api-key': …}
 ```
 
-The application selects and injects; the **domain** runs the capability through the
-runtime; the **provider** is swappable without touching the app. Knowledge Studio is
-the reference consumer (`products/knowledge-studio/src/{platform,index}.ts`).
+Verified by tests: `capabilities/providers/test/provider-config.test.ts` (config-driven
+selection, end-to-end via factory, env precedence). Both flagship apps read this config and
+name no provider (`products/*/src/index.ts`).
 
-## 4. Before you add a NEW capability kind
+## 6. Adding a new provider (extension point)
 
-If you're tempted to add a whole new capability family (media, publishing, routing,
-…), check the roadmap §4 first: build it only when a real application demonstrates the
-need, and record the **promotion trigger** you are satisfying. Evidence first
-(ADR-0012 / ADR-0013).
+Adding a provider is an **adapter + config** exercise, never an application rewrite:
+
+1. **If it speaks the OpenAI `/chat/completions` API** (OpenAI, Azure, Groq, DeepSeek,
+   OpenRouter, Mistral, Together): **nothing to build** — set `provider=openai-compatible` +
+   `baseUrl` + `model` + `apiKey` (+ `headers` for Azure).
+2. **If it has a native API** (Gemini, Anthropic Claude, AWS Bedrock, Cohere; DeepL/Azure
+   Translator for translation; Azure Speech/Deepgram for ASR): add one adapter in
+   `@kmos/providers` behind the existing capability contract (mirror `openai-compatible.ts`),
+   add its `provider` value to the config factory, and unit-test the success + fallback paths.
+   **No app changes** — the apps already inject whatever the config factory returns.
+3. **Fallback + resilience** belong to the capability layer (`withFallback`), not the app.
+4. **Never** import a provider SDK into an application.
+
+See `capabilities/providers/src/knowledge-extraction/openai-compatible.ts` as the template
+and the [Capability Development Guide](CAPABILITY-DEVELOPMENT-GUIDE.md) for the contract rules.

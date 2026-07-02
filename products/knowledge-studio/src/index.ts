@@ -19,7 +19,7 @@ export { SAMPLE_TITLE, SAMPLE_TRANSCRIPT } from './sample.js';
 import { PgSqlClient } from '@kmos/events';
 // Provider adapters now live in the shared capability layer (KCSI-01): the app injects
 // them but no longer owns the HTTP/provider logic.
-import { makeHttpCaptionFetcher, createOllamaExtraction } from '@kmos/providers';
+import { makeHttpCaptionFetcher, createKnowledgeExtractionFromConfig, extractionConfigFromEnv } from '@kmos/providers';
 import { createStudioPlatformFromEnv } from './platform.js';
 import { StudioService } from './studio.js';
 import { PostgresSourceStore } from './source-store.js';
@@ -31,13 +31,12 @@ const isMain = import.meta.url === `file://${process.argv[1]}`
 if (isMain) {
   const port = Number(process.env.PORT ?? 8090);
   const url = process.env.KMOS_DATABASE_URL;
-  // Richer concepts: an Ollama-backed extraction capability when OLLAMA_URL is set
-  // (provider-independent, behind the KMOS contract; falls back to the reference
-  // extractor on any failure). See ADR-KS-0002.
-  const ollamaUrl = process.env.OLLAMA_URL;
-  const extraction = ollamaUrl
-    ? createOllamaExtraction({ url: ollamaUrl, ...(process.env.OLLAMA_MODEL ? { model: process.env.OLLAMA_MODEL } : {}) })
-    : undefined;
+  // Richer concepts via a configured LLM provider — local (Ollama) or any OpenAI-compatible
+  // cloud (OpenAI/Azure/Groq/DeepSeek/…). The app is PROVIDER-UNAWARE: it reads generic
+  // config and injects the capability; switching providers is a config change, not code
+  // (ESRI-01 / ADR-0016). Falls back to the deterministic reference on any failure.
+  const llmConfig = extractionConfigFromEnv();
+  const extraction = createKnowledgeExtractionFromConfig(llmConfig);
   const platform = await createStudioPlatformFromEnv({
     enforce: process.env.KMOS_ENFORCE === 'true',
     ...(extraction ? { extraction } : {}),
@@ -60,7 +59,7 @@ if (isMain) {
     console.log(`Knowledge Studio listening on http://localhost:${port}  (UI at /, health at /health)`);
     console.log(`  KMOS backing: ${backing}${process.env.KMOS_ENFORCE === 'true' ? '  | attribution: ENFORCING' : ''}`);
     console.log(`  caption/ASR capability: ${captionEndpoint ? captionEndpoint : 'not configured (YouTube needs a pasted transcript)'}`);
-    console.log(`  concept extraction: ${ollamaUrl ? `Ollama @ ${ollamaUrl}` : 'reference (offline; set OLLAMA_URL for richer concepts)'}`);
+    console.log(`  concept extraction: ${llmConfig.provider}${llmConfig.baseUrl ? ` @ ${llmConfig.baseUrl}` : ''}${llmConfig.model ? ` (${llmConfig.model})` : ''}`);
     console.log(`  recovered sources: ${studio.listSources().length}`);
   });
 }
