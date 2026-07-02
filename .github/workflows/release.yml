@@ -1,0 +1,119 @@
+name: Release (image + Olares package + GitHub Release)
+
+# The authoritative end-to-end release automation (ESRI-02). On a version tag `v*`:
+#   verify → build & push the KMOS image → package the Olares Application Chart (.tgz)
+#   → create a GitHub Release with the chart, release notes, and checksums attached.
+# The GitHub Release becomes the authoritative download location — no manual packaging,
+# no repository spelunking.
+#
+# Requires repository secrets DOCKERHUB_USERNAME + DOCKERHUB_TOKEN for the image push.
+# App images (Knowledge Studio, Podcast Studio) follow the same pattern in their own
+# release-*-image workflows; add their Olares charts here as they are published to Olares.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version (e.g. 1.0.1)'
+        required: true
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write   # create the GitHub Release + upload assets
+
+jobs:
+  verify:
+    name: Verify (static + tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run fitness
+      - run: npm run typecheck
+      - run: npm run test:unit
+      - run: npm run conformance
+
+  release:
+    name: Build image, package chart, publish release
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Resolve version + namespace
+        id: meta
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "version=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "ns=$(printf '%s' '${{ secrets.DOCKERHUB_USERNAME }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Fail early if Docker Hub secrets are missing
+        run: |
+          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "::error::Set repository secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN first."
+            exit 1
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push KMOS image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            docker.io/${{ steps.meta.outputs.ns }}/kmos:${{ steps.meta.outputs.version }}
+            docker.io/${{ steps.meta.outputs.ns }}/kmos:latest
+
+      - uses: azure/setup-helm@v4
+        with: { version: 'v3.15.0' }
+
+      - name: Package Olares Application Chart (.tgz)
+        id: pkg
+        run: |
+          mkdir -p dist/release
+          # Stamp the chart version to the release version, then package.
+          helm package deployment/olares --version "${{ steps.meta.outputs.version }}" \
+            --app-version "${{ steps.meta.outputs.version }}" -d dist/release
+          ( cd dist/release && sha256sum *.tgz > SHA256SUMS.txt )
+          ls -l dist/release
+
+      - name: Assemble release notes
+        run: |
+          {
+            echo "# KMOS v${{ steps.meta.outputs.version }}"
+            echo
+            echo "Image: \`docker.io/${{ steps.meta.outputs.ns }}/kmos:${{ steps.meta.outputs.version }}\`"
+            echo
+            echo "Artifacts: Olares Application Chart (.tgz) + SHA256SUMS.txt attached below."
+            echo "Install on Olares from the attached chart; see documentation/OLARES-DEPLOYMENT-GUIDE.md."
+          } > dist/release/NOTES.md
+
+      - name: Create GitHub Release with artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: KMOS v${{ steps.meta.outputs.version }}
+          body_path: dist/release/NOTES.md
+          files: |
+            dist/release/*.tgz
+            dist/release/SHA256SUMS.txt
+
+      - name: Summary
+        run: |
+          echo "Image: docker.io/${{ steps.meta.outputs.ns }}/kmos:${{ steps.meta.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Chart + checksums attached to the GitHub Release." >> "$GITHUB_STEP_SUMMARY"

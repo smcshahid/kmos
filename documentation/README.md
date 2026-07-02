@@ -6,8 +6,11 @@ detail behind it. ESRI-01 — kept current to prevent drift.
 
 ## Start here
 
-- **[Ecosystem Playbook](ecosystem/ECOSYSTEM-PLAYBOOK.md)** — the operational handbook /
-  onboarding for building on KMOS (human or AI). The map to everything below.
+- **[The KMOS Book](THE-KMOS-BOOK.md)** — the definitive engineering handbook: the single,
+  coherent entry point (Vision → Architecture → Capabilities → Building Apps → Operations →
+  Governance → Future). Read this first; everything else is the depth behind it.
+- **[Ecosystem Playbook](ecosystem/ECOSYSTEM-PLAYBOOK.md)** — the operational how-to for
+  building on KMOS (human or AI).
 - **[Ecosystem Constitution](ecosystem/ECOSYSTEM-CONSTITUTION.md)** — the enduring principles.
 - **[Platform Vision](PLATFORM-VISION.md)** — what KMOS is and why.
 
@@ -15,7 +18,9 @@ detail behind it. ESRI-01 — kept current to prevent drift.
 
 | Topic | Authoritative doc |
 |---|---|
+| **Engineering handbook (start here)** | [THE-KMOS-BOOK](THE-KMOS-BOOK.md) |
 | Ecosystem principles | [ecosystem/ECOSYSTEM-CONSTITUTION](ecosystem/ECOSYSTEM-CONSTITUTION.md) |
+| Release automation | [RELEASE-AND-DOCKER](RELEASE-AND-DOCKER.md) §6 (`.github/workflows/release.yml`) |
 | Operational handbook (onboarding) | [ecosystem/ECOSYSTEM-PLAYBOOK](ecosystem/ECOSYSTEM-PLAYBOOK.md) |
 | Platform architecture | [ARCHITECTURE](ARCHITECTURE.md) |
 | Ecosystem architecture | [ecosystem/KEAI-01-ECOSYSTEM-ARCHITECTURE](ecosystem/KEAI-01-ECOSYSTEM-ARCHITECTURE.md) |

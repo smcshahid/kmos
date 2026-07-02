@@ -69,3 +69,33 @@ reproducible installs.
 
 See [OLARES-DEPLOYMENT-GUIDE](OLARES-DEPLOYMENT-GUIDE.md) and [OPERATIONS-GUIDE](OPERATIONS-GUIDE.md)
 for the full Olares runbook.
+
+## 6. Automated release (tag → artifacts)
+
+`.github/workflows/release.yml` makes a platform release a single action — push a `v<semver>`
+tag (or dispatch), and CI does the rest:
+
+```
+Tag v* → verify (lint · fitness · typecheck · unit · conformance)
+       → build & push image (docker.io/<ns>/kmos:<semver> + :latest)
+       → package Olares Application Chart (.tgz) + SHA256SUMS.txt
+       → create GitHub Release with the chart, notes, and checksums attached
+```
+
+The **GitHub Release is the authoritative download** — the Olares chart and checksums are
+attached; no manual packaging, no repository spelunking.
+
+### Automated vs. manual (honest status)
+
+| Step | Status |
+|---|---|
+| Verify (static + tests + conformance) on tag | **Automated** (`release.yml` verify job) |
+| Build + push platform image to Docker Hub | **Automated** (needs `DOCKERHUB_*` secrets) |
+| Package Olares chart `.tgz` + checksums | **Automated** (`helm package` in `release.yml`) |
+| Create GitHub Release + upload artifacts | **Automated** (`softprops/action-gh-release`) |
+| App images (Knowledge/Podcast Studio) | **Automated** per-app (`release-studio-image.yml`, `release-podcast-image.yml`); add each app's Olares chart to the release job when it is published to Olares |
+| First real run / secret provisioning | **Manual** — a maintainer sets `DOCKERHUB_USERNAME` + `DOCKERHUB_TOKEN` and pushes the first `v*` tag |
+
+Everything from tag to downloadable artifacts is automated; the only manual prerequisites are
+one-time secret provisioning and the deliberate act of creating the version tag.
+
