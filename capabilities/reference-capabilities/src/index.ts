@@ -1,5 +1,6 @@
 /** @kmos/reference-capabilities — deterministic reference capabilities. */
 export * from './contract.js';
+export * from './compose.js';
 export * from './transcription.js';
 export * from './translation.js';
 export * from './knowledge-extraction.js';

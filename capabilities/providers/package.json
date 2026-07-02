@@ -1,0 +1,23 @@
+{
+  "name": "@kmos/providers",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Real provider adapters behind existing KMOS capability contracts (Ollama knowledge-extraction, HTTP caption/ASR transcription). Extracted from Knowledge Studio (KCSI-01). Applications inject these; they never know the provider.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@kmos/canonical-kernel": "*",
+    "@kmos/reference-capabilities": "*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --experimental-strip-types --import ../../tools/dev/register.mjs --test test/*.test.ts"
+  }
+}
